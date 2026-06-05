@@ -3,6 +3,7 @@
  * Orchestrates message routing and will host AI API calls in later milestones.
  */
 
+import "@/background/handlers/get-problem-context";
 import { onMessage } from "@/shared/messaging/router";
 
 chrome.runtime.onInstalled.addListener(() => {
