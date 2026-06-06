@@ -1,253 +1,189 @@
-# Coding Interview Coach - Product Requirements Document
+Act as a Senior Frontend Engineer and Product Designer.
 
-You are a Senior Software Architect and Product Manager.
+Refactor the Coding Interview Coach extension UI.
 
-Help me design and implement a product called "Coding Interview Coach".
+Current Problems:
 
-## Product Overview
+* UI looks like a utility tool rather than an AI product.
+* English text is hard-coded.
+* Layout feels cramped.
+* Information hierarchy is weak.
+* There is no localization support.
 
-Coding Interview Coach is a browser extension powered by AI that helps software engineers solve coding interview problems without immediately revealing solutions.
+Requirements:
 
-The goal is to act like a mentor rather than an answer generator.
+## 1. Internationalization (i18n)
 
-Supported platforms:
+Support:
 
-* LeetCode
-* HackerRank
-* Codeforces (future)
+* English (en)
+* Vietnamese (vi)
 
-## Core Philosophy
+Language selection priority:
 
-The AI should:
+1. User selected language
+2. Browser language
+3. Fallback to English
 
-* Guide the user
-* Give progressive hints
-* Identify patterns
-* Explain complexity
-* Help users learn
+Examples:
 
-The AI should NOT:
+Browser language:
 
-* Immediately provide full solutions
-* Encourage cheating during contests
-* Spoil interview questions unless explicitly requested
+vi-VN
 
----
+=> UI should automatically use Vietnamese.
 
-## Target Users
+Browser language:
 
-1. Junior developers preparing for interviews
-2. University students learning algorithms
-3. Software engineers practicing LeetCode
+en-US
 
----
+=> UI should automatically use English.
 
-## MVP Features
+Create:
 
-### Feature 1: Problem Detection
+* locales/en.ts
+* locales/vi.ts
 
-When the user visits a supported coding platform:
+Use a translation hook:
 
-* Detect problem title
-* Detect problem description
-* Detect example inputs/outputs
-* Extract content from the page
-
----
-
-### Feature 2: AI Hint Generator
-
-User clicks:
-
-"Give Hint"
-
-AI returns:
-
-Level 1 Hint:
-Very abstract guidance
-
-Level 2 Hint:
-More specific guidance
-
-Level 3 Hint:
-Strong direction but still not full solution
+useTranslation()
 
 Example:
 
-Problem: Longest Substring Without Repeating Characters
+t("give_hint")
 
-Hint 1:
-Can you maintain information about a contiguous section of the string?
-
-Hint 2:
-What happens when you encounter a duplicate character?
-
-Hint 3:
-Consider using a sliding window.
+Do not hardcode text.
 
 ---
 
-### Feature 3: Pattern Detection
+## 2. Improve Layout
 
-User asks:
+Create sections:
 
-"What pattern is this problem?"
-
-AI returns:
-
-* Sliding Window
-* Two Pointers
-* Dynamic Programming
-* Binary Search
-* Graph
-* Trie
-* Heap
-* Union Find
-
-and explains why.
-
----
-
-### Feature 4: Complexity Analyzer
-
-User pastes code.
-
-AI returns:
-
-* Time Complexity
-* Space Complexity
-* Potential Bottlenecks
-* Optimization Suggestions
-
-Output Example:
-
-Time Complexity:
-O(n²)
-
-Space Complexity:
-O(1)
-
-Optimization:
-Consider a hash map to reduce repeated searches.
-
----
-
-### Feature 5: Explain Solution
-
-User requests:
-
-"Explain this solution like I am a junior developer."
-
-AI explains:
-
-* Intuition
-* Step-by-step execution
-* Edge cases
-* Complexity
-
----
-
-## Technical Requirements
-
-Frontend:
-
-* React
-* TypeScript
-* Chrome Extension Manifest V3
-* Tailwind CSS
-
-Architecture:
-
-* Popup UI
-* Content Script
-* Background Service Worker
-
-Backend (Phase 2):
-
-* Django
-* Django REST Framework
-* PostgreSQL
-
-AI Provider:
-
-* Gemini API
-* OpenAI API
-
----
-
-## Chrome Extension Architecture
-
-Content Script:
-
-* Extract problem title
-* Extract problem description
-* Send data to extension
-
-Background Script:
-
-* Manage API requests
-* Handle authentication
-
-Popup UI:
-
-* Hint Generator
-* Complexity Analyzer
-* Pattern Detector
-
----
-
-## Future Features
-
-### Mock Interview Mode
-
-AI acts as interviewer.
-
-It asks:
-
-* Clarification questions
-* Follow-up questions
-* Complexity questions
-
----
-
-### Progress Tracking
-
-Track:
-
-* Problems solved
-* Patterns mastered
-* Weak areas
+Header
+Problem Summary
+AI Actions
+AI Response
 
 Example:
 
-Array: 40
-DP: 12
-Graph: 5
+---
 
-Weak Areas:
+Interview Forge
+AI Coding Interview Coach
+-------------------------
 
-* Trie
-* Union Find
+Problem
+
+* Title
+* Difficulty
+* Example Count
 
 ---
 
-### Learning Roadmap
+Actions
 
-AI generates personalized recommendations:
-
-"You should solve these 5 Sliding Window problems next."
+[Get Hint]
+[Analyze Pattern]
+[Complexity]
 
 ---
 
-## Deliverables
+Response
 
-Please help me:
+Pattern:
+Sliding Window
 
-1. Design system architecture
-2. Design database schema
-3. Design extension folder structure
-4. Design API contracts
-5. Create implementation roadmap
-6. Generate React + TypeScript code step by step
-7. Follow software engineering best practices
-8. Prefer clean architecture and maintainability
+Hint Level 1:
+...
+
+Hint Level 2:
+...
+
+---
+
+---
+
+## 3. Modern Design
+
+Use:
+
+* TailwindCSS
+* Rounded cards
+* Better spacing
+* Better typography
+
+Visual style:
+
+* ChatGPT
+* Linear
+* Notion
+
+Avoid:
+
+* Dense blocks
+* Plain buttons
+* Large paragraphs
+
+---
+
+## 4. AI Response Cards
+
+Render:
+
+Pattern
+Complexity
+Hints
+
+as separate cards.
+
+Example:
+
+## Pattern
+
+Sliding Window
+
+## Complexity
+
+Time: O(n)
+Space: O(1)
+
+## Hints
+
+Level 1
+...
+
+Level 2
+...
+
+Level 3
+...
+
+---
+
+## 5. Loading State
+
+When Gemini is processing:
+
+Show:
+
+* Skeleton UI
+* Animated loading indicator
+
+instead of plain text.
+
+---
+
+## 6. Empty State
+
+When user has not requested help yet:
+
+Show:
+
+"Need help solving this problem?"
+
+and action buttons.
+
+---
+
+Generate production-ready React + TypeScript code.

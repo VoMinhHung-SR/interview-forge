@@ -4,6 +4,7 @@
  */
 
 import "@/background/handlers/get-problem-context";
+import "@/background/handlers/generate-hints";
 import { onMessage } from "@/shared/messaging/router";
 
 chrome.runtime.onInstalled.addListener(() => {

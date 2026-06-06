@@ -28,21 +28,44 @@ npm run build
 
 ### Load in Chrome
 
-1. Run `npm run dev` or `npm run build`
-2. Open `chrome://extensions`
-3. Enable **Developer mode**
-4. Click **Load unpacked**
-5. Select the `dist/` directory
+**Option A — Production (recommended, no dev server needed):**
+
+```bash
+npm run build
+```
+
+Load the **`dist/`** folder in `chrome://extensions`. Works without `npm run dev`.
+
+**Option B — Dev mode (hot reload):**
+
+```bash
+npm run dev   # keep this terminal running
+```
+
+1. Load **`dist/`** in `chrome://extensions`
+2. If using a **remote workspace** (Cursor SSH/WSL), open the **Ports** panel and forward port **5173**
+3. Click **Reload Extension** on the CRXJS popup (or in `chrome://extensions`)
+
+### Troubleshooting "Cannot connect to localhost:5173"
+
+| Cause | Fix |
+|-------|-----|
+| Dev server not running | Run `npm run dev` and keep it open |
+| Extension loaded before dev server started | Reload extension after `npm run dev` is ready |
+| Remote workspace (Cursor) | Forward port **5173** in Cursor → Ports tab |
+| Dev mode too fragile | Use `npm run build` instead (Option A) |
 
 ### Environment Variables
 
-Copy `.env.example` to `.env` and fill in API keys when implementing the AI layer (M2):
+Copy `.env.example` to `.env`:
 
 ```
-VITE_GEMINI_API_KEY=
-VITE_OPENAI_API_KEY=
+VITE_GEMINI_API_KEY=your_key_here
+VITE_GEMINI_MODEL=gemini-2.5-flash
 ```
+
+Run `npm run build` after changing `.env`, then reload the extension in `chrome://extensions`.
 
 ## Status
 
-Scaffold only — no MVP features implemented yet. See [PRD.md](./PRD.md) for product requirements.
+MVP in progress: LeetCode problem detection, Hint Engine, and popup hint UI are wired. Pattern detection, complexity analyzer, and explain solution are not yet implemented. See [PRD.md](./PRD.md).

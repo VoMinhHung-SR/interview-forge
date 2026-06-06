@@ -29,6 +29,9 @@
   "permissions": ["storage", "activeTab"],
   "host_permissions": [
     "https://leetcode.com/*",
-    "https://www.hackerrank.com/*"
+    "https://www.hackerrank.com/*",
+    "https://generativelanguage.googleapis.com/*",
+    "http://localhost:5173/*",
+    "http://127.0.0.1:5173/*"
   ]
 }

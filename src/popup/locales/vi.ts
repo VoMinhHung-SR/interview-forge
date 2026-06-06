@@ -1,0 +1,59 @@
+import type { TranslationKey } from "./en";
+
+export const vi: Record<TranslationKey, string> = {
+  appName: "Interview Forge",
+  appSubtitle: "Huấn luyện viên phỏng vấn coding AI",
+
+  problem: "Bài toán",
+  difficulty: "Độ khó",
+  examples: "Ví dụ",
+  exampleCount: "{{count}} ví dụ",
+  exampleCount_plural: "{{count}} ví dụ",
+  detectingProblem: "Đang nhận diện bài toán trên trang…",
+  noProblem: "Không phát hiện bài toán. Mở tab LeetCode rồi làm mới.",
+  refresh: "Làm mới",
+  retry: "Thử lại",
+
+  actions: "Hành động",
+  getHint: "Gợi ý",
+  nextHint: "Gợi ý tiếp (Cấp {{level}})",
+  analyzePattern: "Phân tích pattern",
+  complexity: "Độ phức tạp",
+  generating: "Đang tạo…",
+
+  response: "Kết quả",
+  pattern: "Pattern",
+  complexityTitle: "Độ phức tạp",
+  hints: "Gợi ý",
+  hintLevel: "Cấp {{level}}",
+  hintLevelAbstract: "Trừu tượng",
+  hintLevelSpecific: "Cụ thể",
+  hintLevelDirection: "Định hướng",
+  time: "Thời gian",
+  space: "Bộ nhớ",
+
+  emptyTitle: "Cần trợ giúp giải bài này?",
+  emptySubtitle:
+    "Nhận gợi ý từng bước, phân tích pattern và độ phức tạp — không tiết lộ lời giải hoàn chỉnh.",
+  allHintsShown: "Đã hiển thị đủ 3 cấp gợi ý. Hãy thử tự giải tiếp!",
+
+  loadingHint: "Đang tạo gợi ý",
+  loadingPattern: "Đang phân tích pattern",
+  loadingComplexity: "Đang phân tích độ phức tạp",
+  loadingStageRead: "Đang đọc đề bài…",
+  loadingStageAnalyze: "Đang phân tích cấu trúc bài toán…",
+  loadingStageContact: "Đang liên hệ Gemini…",
+  loadingWaiting: "Vẫn đang chờ AI…",
+  loadingSlow: "API miễn phí có thể chậm hoặc bị giới hạn. Vui lòng đợi…",
+
+  errorNoResponse:
+    "Không nhận được phản hồi từ extension. Tải lại extension tại chrome://extensions rồi thử lại.",
+  errorEmptyHint: "AI trả về gợi ý rỗng. Vui lòng thử lại.",
+  errorGeneric: "Đã xảy ra lỗi khi tạo phản hồi.",
+  errorTimeout:
+    "Hết thời gian chờ. Gemini có thể bị giới hạn — đợi một phút rồi thử lại.",
+
+  language: "Ngôn ngữ",
+  languageEn: "Tiếng Anh",
+  languageVi: "Tiếng Việt",
+};
