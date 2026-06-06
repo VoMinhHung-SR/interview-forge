@@ -4,7 +4,7 @@
 
 @layer components {
   .skeleton {
-    @apply animate-pulse bg-slate-200/80;
+    @apply animate-pulse bg-slate-200/80 dark:bg-slate-700/70;
   }
 }
 
@@ -49,4 +49,8 @@ body {
   50% {
     opacity: 0.55;
   }
+}
+
+.expandable-text-panel {
+  transition: max-height 0.3s ease-in-out;
 }

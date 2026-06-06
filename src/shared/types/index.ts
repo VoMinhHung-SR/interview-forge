@@ -1,4 +1,9 @@
-export type { PlatformId, ProblemContext, ProblemExample } from "./problem-context";
+export type {
+  PlatformId,
+  ProblemContext,
+  ProblemDifficulty,
+  ProblemExample,
+} from "./problem-context";
 export type {
   ExtensionMessage,
   ExtensionResponse,
@@ -18,3 +23,12 @@ export type {
   MentorComplexity,
 } from "./hints";
 export { HINT_LEVEL_LABELS } from "./hints";
+export type {
+  TranslateProblemRequest,
+  TranslateProblemResponse,
+  TranslationCacheEntry,
+  TranslationEngineData,
+  TranslationEngineError,
+  TranslationEngineErrorCode,
+  TranslationEngineResult,
+} from "./translation";

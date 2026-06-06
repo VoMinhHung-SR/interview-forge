@@ -1,5 +1,6 @@
 import type { ProblemContext } from "./problem-context";
 import type { GenerateHintsRequest, HintLevel } from "./hints";
+import type { TranslateProblemRequest } from "./translation";
 
 /** Discriminated union of extension message payloads. */
 export type ExtensionMessage =
@@ -9,6 +10,10 @@ export type ExtensionMessage =
   | {
       type: "GENERATE_HINTS";
       payload: GenerateHintsRequest & { level?: HintLevel };
+    }
+  | {
+      type: "TRANSLATE_PROBLEM";
+      payload: TranslateProblemRequest;
     };
 
 export type ExtensionResponse<T = unknown> =

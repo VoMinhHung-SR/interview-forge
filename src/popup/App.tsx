@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { sendMessage } from "@/shared/messaging";
-import type { HintEngineResponse, ProblemContext } from "@/shared/types";
+import type { ProblemContext } from "@/shared/types";
 import { LanguageProvider } from "@/popup/hooks/useLanguage";
 import { useTranslation } from "@/popup/hooks/useTranslation";
 import { AppHeader } from "./components/AppHeader";
@@ -10,9 +10,6 @@ import { ProblemSummary } from "./components/ProblemSummary";
 function AppContent() {
   const { t, locale, setLocale, ready } = useTranslation();
   const [problem, setProblem] = useState<ProblemContext | null>(null);
-  const [analysis, setAnalysis] = useState<HintEngineResponse["analysis"] | null>(
-    null,
-  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -54,7 +51,6 @@ function AppContent() {
 
         <ProblemSummary
           problem={problem}
-          analysis={analysis}
           loading={loading}
           error={error}
           onRefresh={loadProblem}
@@ -64,7 +60,6 @@ function AppContent() {
           <CoachPanel
             key={`${problem.url}-${locale}`}
             problem={problem}
-            onAnalysis={setAnalysis}
           />
         )}
 

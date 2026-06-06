@@ -1,28 +1,36 @@
 import type { ProblemContext } from "@/shared/types";
-import type { MentorAnalysis } from "@/shared/types/hints";
+import { useProblemTranslation } from "@/popup/hooks/useProblemTranslation";
 import { useTranslation } from "@/popup/hooks/useTranslation";
+import { DifficultyBadge } from "./DifficultyBadge";
+import { ExpandableText } from "./ExpandableText";
+import { TranslationLoadingSkeleton } from "./TranslationLoadingSkeleton";
 
 interface ProblemSummaryProps {
   problem: ProblemContext | null;
-  analysis: MentorAnalysis | null;
   loading: boolean;
   error: string | null;
   onRefresh: () => void;
 }
 
+const PROBLEM_CARD_CLASS =
+  "rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm dark:border-slate-700/80 dark:bg-slate-900";
+
 export function ProblemSummary({
   problem,
-  analysis,
   loading,
   error,
   onRefresh,
 }: ProblemSummaryProps) {
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
+  const { displayDescription, loading: translationLoading } = useProblemTranslation(
+    problem,
+    locale,
+  );
 
   if (loading) {
     return (
-      <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+      <section className={PROBLEM_CARD_CLASS}>
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
           {t("problem")}
         </p>
         <div className="mt-3 space-y-2">
@@ -36,12 +44,12 @@ export function ProblemSummary({
 
   if (error) {
     return (
-      <section className="rounded-2xl border border-red-100 bg-red-50/60 p-4">
-        <p className="text-sm text-red-600">{error}</p>
+      <section className="rounded-2xl border border-red-100 bg-red-50/60 p-5 dark:border-red-900/50 dark:bg-red-950/40">
+        <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
         <button
           type="button"
           onClick={onRefresh}
-          className="mt-2 text-sm font-medium text-red-700 hover:underline"
+          className="mt-2 text-sm font-medium text-red-700 hover:underline dark:text-red-300"
         >
           {t("retry")}
         </button>
@@ -51,12 +59,12 @@ export function ProblemSummary({
 
   if (!problem) {
     return (
-      <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
-        <p className="text-sm text-slate-500">{t("noProblem")}</p>
+      <section className={PROBLEM_CARD_CLASS}>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{t("noProblem")}</p>
         <button
           type="button"
           onClick={onRefresh}
-          className="mt-2 text-sm font-medium text-blue-600 hover:underline"
+          className="mt-2 text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
         >
           {t("refresh")}
         </button>
@@ -64,40 +72,37 @@ export function ProblemSummary({
     );
   }
 
-  const difficulty = analysis?.difficulty;
   const exampleLabel =
     problem.examples.length === 1 ?
       t("exampleCount", { count: 1 })
     : t("exampleCount_plural", { count: problem.examples.length });
 
   return (
-    <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+    <section className={PROBLEM_CARD_CLASS}>
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
         {t("problem")}
       </p>
 
-      <h2 className="mt-2 text-sm font-semibold leading-snug text-slate-900">
-        {problem.title}
+      <h2 className="mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">
+        <span>{problem.title}</span>
+        {problem.difficulty && <DifficultyBadge difficulty={problem.difficulty} />}
       </h2>
 
-      {(analysis?.summary || problem.description) && (
-        <p className="mt-2 line-clamp-3 text-xs leading-relaxed text-slate-600">
-          {analysis?.summary || problem.description}
-        </p>
+      {problem.description && (
+        <div className="mt-3 min-h-[5.75rem]">
+          {translationLoading ?
+            <TranslationLoadingSkeleton />
+          : <ExpandableText text={displayDescription} maxLines={3} />}
+        </div>
       )}
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        {difficulty && (
-          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-700">
-            {t("difficulty")}: {difficulty}
-          </span>
-        )}
-        {problem.examples.length > 0 && (
-          <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] font-medium text-slate-600">
+      {problem.examples.length > 0 && (
+        <div className="mt-4 border-t border-slate-100 pt-3 dark:border-slate-800">
+          <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
             {exampleLabel}
           </span>
-        )}
-      </div>
+        </div>
+      )}
     </section>
   );
 }

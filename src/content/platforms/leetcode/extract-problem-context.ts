@@ -3,6 +3,8 @@ import { extractTitle } from "./extract-title";
 import { extractDescription, splitDescriptionBody } from "./extract-description";
 import { extractExamples } from "./extract-examples";
 import { extractConstraints } from "./extract-constraints";
+import { extractDifficulty } from "./extract-difficulty";
+import { parseProblemId } from "./parse-problem-id";
 
 const PROBLEM_PAGE_PATTERN = /leetcode\.com\/problems\/[^/?#]+/;
 
@@ -16,6 +18,11 @@ export function isLeetCodeProblemPage(url: string): boolean {
 /**
  * Extracts raw fields from the LeetCode DOM.
  */
+function buildProblemId(title: string, url: string): string | undefined {
+  const problemId = parseProblemId(title, url);
+  return problemId ?? undefined;
+}
+
 export function extractLeetCodeFields(document: Document): LeetCodeExtractedFields | null {
   const rawDescription = extractDescription(document);
   if (!rawDescription) return null;
@@ -26,12 +33,19 @@ export function extractLeetCodeFields(document: Document): LeetCodeExtractedFiel
   const examples = extractExamples(rawDescription);
   const constraints = extractConstraints(rawDescription);
   const description = splitDescriptionBody(rawDescription);
+  const difficulty = extractDifficulty(document);
+  const problemId = buildProblemId(
+    title,
+    document.defaultView?.location.href ?? "",
+  );
 
   return {
     title,
     description: description || rawDescription,
     examples,
     ...(constraints.length > 0 ? { constraints } : {}),
+    ...(difficulty ? { difficulty } : {}),
+    ...(problemId ? { problemId } : {}),
   };
 }
 
@@ -71,6 +85,8 @@ export function extractLeetCodeProblemContext(
   const examples = extractExamples(rawDescription);
   const constraints = extractConstraints(rawDescription);
   const description = splitDescriptionBody(rawDescription);
+  const difficulty = extractDifficulty(document);
+  const problemId = buildProblemId(title, url);
 
   return {
     success: true,
@@ -81,6 +97,8 @@ export function extractLeetCodeProblemContext(
       description: description || rawDescription,
       examples,
       ...(constraints.length > 0 ? { constraints } : {}),
+      ...(difficulty ? { difficulty } : {}),
+      ...(problemId ? { problemId } : {}),
       extractedAt: new Date().toISOString(),
     },
   };

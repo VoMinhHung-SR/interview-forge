@@ -4,6 +4,9 @@ export const en = {
 
   problem: "Problem",
   difficulty: "Difficulty",
+  difficultyEasy: "Easy",
+  difficultyMedium: "Medium",
+  difficultyHard: "Hard",
   examples: "Examples",
   exampleCount: "{{count}} example",
   exampleCount_plural: "{{count}} examples",
@@ -11,6 +14,9 @@ export const en = {
   noProblem: "No problem detected. Open a LeetCode problem tab, then refresh.",
   refresh: "Refresh",
   retry: "Retry",
+  showMore: "Show more",
+  showLess: "Show less",
+  translatingProblem: "Translating problem...",
 
   actions: "Actions",
   getHint: "Get Hint",

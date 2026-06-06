@@ -1,5 +1,7 @@
 export type PlatformId = "leetcode" | "hackerrank";
 
+export type ProblemDifficulty = "Easy" | "Medium" | "Hard";
+
 export interface ProblemExample {
   input: string;
   output: string;
@@ -13,5 +15,7 @@ export interface ProblemContext {
   description: string;
   examples: ProblemExample[];
   constraints?: string[];
+  difficulty?: ProblemDifficulty;
+  problemId?: string;
   extractedAt: string;
 }

@@ -6,6 +6,9 @@ export const vi: Record<TranslationKey, string> = {
 
   problem: "Bài toán",
   difficulty: "Độ khó",
+  difficultyEasy: "Dễ",
+  difficultyMedium: "Trung bình",
+  difficultyHard: "Khó",
   examples: "Ví dụ",
   exampleCount: "{{count}} ví dụ",
   exampleCount_plural: "{{count}} ví dụ",
@@ -13,6 +16,9 @@ export const vi: Record<TranslationKey, string> = {
   noProblem: "Không phát hiện bài toán. Mở tab LeetCode rồi làm mới.",
   refresh: "Làm mới",
   retry: "Thử lại",
+  showMore: "Xem thêm",
+  showLess: "Thu gọn",
+  translatingProblem: "Đang dịch đề bài...",
 
   actions: "Hành động",
   getHint: "Gợi ý",

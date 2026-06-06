@@ -1,23 +1,38 @@
 export { HintEngine } from "./hint-engine";
+export { TranslationEngine } from "./translation-engine";
 export { createAiProvider, getActiveProviderId } from "./providers";
 
 import { HintEngine } from "./hint-engine";
+import { TranslationEngine } from "./translation-engine";
 import { createAiProvider } from "./providers";
 
-let engineInstance: HintEngine | null = null;
+let hintEngineInstance: HintEngine | null = null;
+let translationEngineInstance: TranslationEngine | null = null;
 
 /** Returns a singleton HintEngine, or null if no API key is configured. */
 export function getHintEngine(): HintEngine | null {
-  if (engineInstance) return engineInstance;
+  if (hintEngineInstance) return hintEngineInstance;
 
   const provider = createAiProvider();
   if (!provider) return null;
 
-  engineInstance = new HintEngine({ provider });
-  return engineInstance;
+  hintEngineInstance = new HintEngine({ provider });
+  return hintEngineInstance;
 }
 
-/** Resets the singleton (useful when env keys change during dev). */
+/** Returns a singleton TranslationEngine, or null if no API key is configured. */
+export function getTranslationEngine(): TranslationEngine | null {
+  if (translationEngineInstance) return translationEngineInstance;
+
+  const provider = createAiProvider();
+  if (!provider) return null;
+
+  translationEngineInstance = new TranslationEngine({ provider });
+  return translationEngineInstance;
+}
+
+/** Resets AI engine singletons (useful when env keys change during dev). */
 export function resetHintEngine(): void {
-  engineInstance = null;
+  hintEngineInstance = null;
+  translationEngineInstance = null;
 }
