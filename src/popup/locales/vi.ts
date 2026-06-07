@@ -62,4 +62,13 @@ export const vi: Record<TranslationKey, string> = {
   language: "Ngôn ngữ",
   languageEn: "Tiếng Anh",
   languageVi: "Tiếng Việt",
+
+  recentProblems: "Bài toán gần đây",
+  savedProblems: "Bài toán đã lưu",
+  learningProfile: "Hồ sơ học tập",
+  saveProblem: "Lưu",
+  unsaveProblem: "Bỏ lưu",
+  problemsViewed: "Bài đã xem",
+  hintsRequested: "Gợi ý đã yêu cầu",
+  topPatterns: "Pattern phổ biến",
 };

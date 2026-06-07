@@ -1,8 +1,5 @@
 import { getTranslationEngine } from "@/background/ai";
-import {
-  getTranslationCache,
-  setTranslationCache,
-} from "@/background/storage/cache.service";
+import { getTranslation, saveTranslation } from "@/shared/cache/cache.service";
 import { registerHandler } from "@/shared/messaging/router";
 import type { ExtensionResponse, TranslateProblemResponse } from "@/shared/types";
 
@@ -23,7 +20,7 @@ registerHandler("TRANSLATE_PROBLEM", async (message) => {
     };
   }
 
-  const cached = await getTranslationCache(problemId, language);
+  const cached = await getTranslation(problemId, language);
   if (cached) {
     return {
       ok: true,
@@ -49,7 +46,7 @@ registerHandler("TRANSLATE_PROBLEM", async (message) => {
     return { ok: false, error: result.error.message };
   }
 
-  await setTranslationCache({
+  await saveTranslation({
     problemId,
     language,
     translatedDescription: result.data.translatedDescription,

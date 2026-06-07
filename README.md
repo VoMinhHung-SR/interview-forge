@@ -66,6 +66,6 @@ VITE_GEMINI_MODEL=gemini-2.5-flash
 
 Run `npm run build` after changing `.env`, then reload the extension in `chrome://extensions`.
 
-## Status
+## Contributors
 
-MVP in progress: LeetCode problem detection, Hint Engine, and popup hint UI are wired. Pattern detection, complexity analyzer, and explain solution are not yet implemented. See [PRD.md](./PRD.md).
+Built by **[VoMinhHung-SR](https://github.com/VoMinhHung-SR)** with **[Cursor](https://cursor.com)**

@@ -1,5 +1,10 @@
 import type { ProblemContext } from "./problem-context";
 import type { GenerateHintsRequest, HintLevel } from "./hints";
+import type {
+  HintSession,
+  SaveProblemPayload,
+  UnsaveProblemPayload,
+} from "./persistence";
 import type { TranslateProblemRequest } from "./translation";
 
 /** Discriminated union of extension message payloads. */
@@ -14,7 +19,14 @@ export type ExtensionMessage =
   | {
       type: "TRANSLATE_PROBLEM";
       payload: TranslateProblemRequest;
-    };
+    }
+  | { type: "GET_RECENT_PROBLEMS" }
+  | { type: "GET_SAVED_PROBLEMS" }
+  | { type: "SAVE_PROBLEM"; payload: SaveProblemPayload }
+  | { type: "UNSAVE_PROBLEM"; payload: UnsaveProblemPayload }
+  | { type: "GET_HINT_SESSION"; payload: { problemId: string } }
+  | { type: "UPDATE_HINT_SESSION"; payload: HintSession }
+  | { type: "GET_LEARNING_PROFILE" };
 
 export type ExtensionResponse<T = unknown> =
   | { ok: true; data: T }

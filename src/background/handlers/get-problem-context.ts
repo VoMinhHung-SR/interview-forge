@@ -1,5 +1,22 @@
+import { addRecentProblem, trackProblemView } from "@/shared/domain";
 import { registerHandler } from "@/shared/messaging/router";
 import type { ExtensionResponse, ProblemContext } from "@/shared/types";
+
+async function recordProblemView(context: ProblemContext): Promise<void> {
+  if (!context.problemId) return;
+
+  const isNew = await addRecentProblem({
+    problemId: context.problemId,
+    title: context.title,
+    difficulty: context.difficulty,
+    platform: context.platform,
+    viewedAt: Date.now(),
+  });
+
+  if (isNew) {
+    await trackProblemView();
+  }
+}
 
 registerHandler("GET_PROBLEM_CONTEXT", async () => {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -21,7 +38,13 @@ registerHandler("GET_PROBLEM_CONTEXT", async () => {
       ExtensionResponse<ProblemContext | null>
     >(tab.id, { type: "GET_PROBLEM_CONTEXT" });
 
-    return response ?? { ok: true, data: null };
+    const result = response ?? { ok: true as const, data: null };
+
+    if (result.ok && result.data) {
+      await recordProblemView(result.data);
+    }
+
+    return result;
   } catch {
     return {
       ok: false,
