@@ -32,3 +32,13 @@ export type {
   TranslationEngineErrorCode,
   TranslationEngineResult,
 } from "./translation";
+export type {
+  HintSession,
+  LearningProfile,
+  RecentProblem,
+  SaveProblemPayload,
+  SaveProblemResult,
+  SavedProblem,
+  UnsaveProblemPayload,
+} from "./persistence";
+export { createEmptyLearningProfile } from "./persistence";

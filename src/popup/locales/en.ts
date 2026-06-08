@@ -59,6 +59,16 @@ export const en = {
   language: "Language",
   languageEn: "English",
   languageVi: "Vietnamese",
+
+  recentProblems: "Recent Problems",
+  recentProblemNoUrl: "Open this problem once to restore its link",
+  savedProblems: "Saved Problems",
+  learningProfile: "Learning Profile",
+  saveProblem: "Save",
+  unsaveProblem: "Unsave",
+  problemsViewed: "Problems Viewed",
+  hintsRequested: "Hints Requested",
+  topPatterns: "Top Patterns",
 } as const;
 
 export type TranslationKey = keyof typeof en;

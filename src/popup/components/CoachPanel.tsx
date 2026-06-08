@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { sendMessage } from "@/shared/messaging";
 import type {
   HintEngineResponse,
   HintLevel,
   HintLevelContent,
+  HintSession,
   ProblemContext,
 } from "@/shared/types";
+import { HINT_LEVEL_LABELS } from "@/shared/types";
 import { withTimeout } from "@/shared/utils/timeout";
 import { useTranslation } from "@/popup/hooks/useTranslation";
 import { ActionButton } from "./EmptyState";
@@ -28,6 +30,52 @@ const HINT_LEVEL_SUBLABELS: Record<HintLevel, "hintLevelAbstract" | "hintLevelSp
   3: "hintLevelDirection",
 };
 
+function extractHintTexts(data: HintEngineResponse, count: number): string[] {
+  return data.hints
+    .filter((hint) => hint.text.length > 0)
+    .slice(0, count)
+    .map((hint) => hint.text);
+}
+
+function buildResponseFromSession(
+  session: HintSession,
+  problemTitle: string,
+  locale: "en" | "vi",
+): HintEngineResponse {
+  const hints: [HintLevelContent, HintLevelContent, HintLevelContent] = [
+    {
+      level: 1,
+      label: HINT_LEVEL_LABELS[1],
+      text: session.hints[0] ?? "",
+    },
+    {
+      level: 2,
+      label: HINT_LEVEL_LABELS[2],
+      text: session.hints[1] ?? "",
+    },
+    {
+      level: 3,
+      label: HINT_LEVEL_LABELS[3],
+      text: session.hints[2] ?? "",
+    },
+  ];
+
+  return {
+    problemTitle,
+    analysis: {
+      language: locale,
+      pattern: "",
+      difficulty: "",
+      summary: "",
+      complexity: { time: "", space: "" },
+    },
+    hints,
+    guardrailPassed: true,
+    generatedAt: new Date(session.updatedAt).toISOString(),
+    model: "",
+  };
+}
+
 export function CoachPanel({ problem, onAnalysis }: CoachPanelProps) {
   const { t, locale } = useTranslation();
   const [response, setResponse] = useState<HintEngineResponse | null>(null);
@@ -36,6 +84,7 @@ export function CoachPanel({ problem, onAnalysis }: CoachPanelProps) {
   const [showComplexity, setShowComplexity] = useState(false);
   const [loadingAction, setLoadingAction] = useState<LoadingAction>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sessionLoaded, setSessionLoaded] = useState(false);
 
   const loading = loadingAction !== null;
   const hints = response?.hints.filter((h) => h.text.length > 0) ?? [];
@@ -43,8 +92,51 @@ export function CoachPanel({ problem, onAnalysis }: CoachPanelProps) {
   const canRequestMoreHints = visibleHintCount < 3 && hints.length >= visibleHintCount + 1;
   const hasStarted = response !== null || visibleHintCount > 0 || showPattern || showComplexity;
 
+  const persistHintSession = useCallback(
+    async (level: number, hintTexts: string[]) => {
+      if (!problem.problemId) return;
+
+      await sendMessage<HintSession>({
+        type: "UPDATE_HINT_SESSION",
+        payload: {
+          problemId: problem.problemId,
+          currentLevel: level,
+          hints: hintTexts,
+          updatedAt: Date.now(),
+        },
+      });
+    },
+    [problem.problemId],
+  );
+
+  useEffect(() => {
+    if (!problem.problemId) {
+      setSessionLoaded(true);
+      return;
+    }
+
+    void (async () => {
+      const result = await sendMessage<HintSession | null>({
+        type: "GET_HINT_SESSION",
+        payload: { problemId: problem.problemId! },
+      });
+
+      if (result.ok && result.data && result.data.currentLevel > 0) {
+        const restored = buildResponseFromSession(
+          result.data,
+          problem.title,
+          locale,
+        );
+        setResponse(restored);
+        setVisibleHintCount(result.data.currentLevel);
+      }
+
+      setSessionLoaded(true);
+    })();
+  }, [problem.problemId, problem.title, locale]);
+
   async function fetchAnalysis(action: LoadingAction) {
-    if (loading) return;
+    if (loading || !sessionLoaded) return;
 
     if (response) {
       applyAction(action);
@@ -106,6 +198,7 @@ export function CoachPanel({ problem, onAnalysis }: CoachPanelProps) {
     if (action === "hint") {
       const nextCount = Math.min(visibleHintCount + 1, 3);
       setVisibleHintCount(nextCount);
+      void persistHintSession(nextCount, extractHintTexts(data, nextCount));
     }
     if (action === "pattern") setShowPattern(true);
     if (action === "complexity") setShowComplexity(true);
@@ -128,6 +221,10 @@ export function CoachPanel({ problem, onAnalysis }: CoachPanelProps) {
     t("loadingStageAnalyze"),
     t("loadingStageContact"),
   ];
+
+  if (!sessionLoaded) {
+    return <SkeletonLoader variant="generic" />;
+  }
 
   return (
     <div className="space-y-4">

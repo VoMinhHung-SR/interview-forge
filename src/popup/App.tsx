@@ -2,16 +2,21 @@ import { useCallback, useEffect, useState } from "react";
 import { sendMessage } from "@/shared/messaging";
 import type { ProblemContext } from "@/shared/types";
 import { LanguageProvider } from "@/popup/hooks/useLanguage";
+import { usePersistence } from "@/popup/hooks/usePersistence";
 import { useTranslation } from "@/popup/hooks/useTranslation";
 import { AppHeader } from "./components/AppHeader";
 import { CoachPanel } from "./components/CoachPanel";
+import { PersistencePanel } from "./components/PersistencePanel";
 import { ProblemSummary } from "./components/ProblemSummary";
 
 function AppContent() {
   const { t, locale, setLocale, ready } = useTranslation();
+  const { recent, saved, profile, refresh, loading: persistenceLoading } =
+    usePersistence();
   const [problem, setProblem] = useState<ProblemContext | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [saveLoading, setSaveLoading] = useState(false);
 
   const loadProblem = useCallback(async () => {
     setLoading(true);
@@ -30,11 +35,55 @@ function AppContent() {
     }
 
     setProblem(response.data);
-  }, []);
+    void refresh();
+  }, [refresh]);
 
   useEffect(() => {
     void loadProblem();
   }, [loadProblem]);
+
+  const isCurrentSaved =
+    problem?.problemId ?
+      saved.some((item) => item.problemId === problem.problemId)
+    : false;
+
+  const handleToggleSave = useCallback(async () => {
+    if (!problem?.problemId) return;
+
+    setSaveLoading(true);
+
+    if (isCurrentSaved) {
+      await sendMessage({
+        type: "UNSAVE_PROBLEM",
+        payload: { problemId: problem.problemId },
+      });
+    } else {
+      await sendMessage({
+        type: "SAVE_PROBLEM",
+        payload: {
+          problemId: problem.problemId,
+          title: problem.title,
+          difficulty: problem.difficulty,
+          platform: problem.platform,
+          url: problem.url,
+        },
+      });
+    }
+
+    await refresh();
+    setSaveLoading(false);
+  }, [problem, isCurrentSaved, refresh]);
+
+  const handleUnsave = useCallback(
+    async (problemId: string) => {
+      await sendMessage({
+        type: "UNSAVE_PROBLEM",
+        payload: { problemId },
+      });
+      await refresh();
+    },
+    [refresh],
+  );
 
   if (!ready) {
     return (
@@ -54,6 +103,17 @@ function AppContent() {
           loading={loading}
           error={error}
           onRefresh={loadProblem}
+          isSaved={isCurrentSaved}
+          onToggleSave={() => void handleToggleSave()}
+          saveLoading={saveLoading}
+        />
+
+        <PersistencePanel
+          recent={recent}
+          saved={saved}
+          profile={profile}
+          loading={persistenceLoading}
+          onUnsave={(problemId) => void handleUnsave(problemId)}
         />
 
         {problem && (

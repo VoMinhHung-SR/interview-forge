@@ -1,4 +1,5 @@
 import { getHintEngine } from "@/background/ai";
+import { trackHintRequest, trackPattern } from "@/shared/domain";
 import { registerHandler } from "@/shared/messaging/router";
 import type { ExtensionResponse, HintEngineResponse } from "@/shared/types";
 
@@ -25,6 +26,16 @@ registerHandler("GENERATE_HINTS", async (message) => {
 
   if (!result.success) {
     return { ok: false, error: result.error.message };
+  }
+
+  const hasHints = result.data.hints.some((hint) => hint.text.length > 0);
+  if (level !== undefined || hasHints) {
+    await trackHintRequest();
+  }
+
+  const pattern = result.data.analysis.pattern?.trim();
+  if (pattern) {
+    await trackPattern(pattern);
   }
 
   return {

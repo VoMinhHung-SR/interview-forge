@@ -8,6 +8,7 @@ export { LoadingProgress } from "./LoadingProgress";
 export { PatternPanel } from "./PatternPanel";
 export { ComplexityPanel } from "./ComplexityPanel";
 export { ExplainPanel } from "./ExplainPanel";
+export { PersistencePanel } from "./PersistencePanel";
 export { ProblemHeader } from "./ProblemHeader";
 export { ProblemSummary } from "./ProblemSummary";
 export { ResponseCard } from "./ResponseCard";

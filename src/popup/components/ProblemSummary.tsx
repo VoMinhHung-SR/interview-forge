@@ -10,6 +10,9 @@ interface ProblemSummaryProps {
   loading: boolean;
   error: string | null;
   onRefresh: () => void;
+  isSaved?: boolean;
+  onToggleSave?: () => void;
+  saveLoading?: boolean;
 }
 
 const PROBLEM_CARD_CLASS =
@@ -20,6 +23,9 @@ export function ProblemSummary({
   loading,
   error,
   onRefresh,
+  isSaved = false,
+  onToggleSave,
+  saveLoading = false,
 }: ProblemSummaryProps) {
   const { t, locale } = useTranslation();
   const { displayDescription, loading: translationLoading } = useProblemTranslation(
@@ -83,10 +89,23 @@ export function ProblemSummary({
         {t("problem")}
       </p>
 
-      <h2 className="mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">
-        <span>{problem.title}</span>
-        {problem.difficulty && <DifficultyBadge difficulty={problem.difficulty} />}
-      </h2>
+      <div className="mt-3 flex items-start justify-between gap-2">
+        <h2 className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">
+          <span>{problem.title}</span>
+          {problem.difficulty && <DifficultyBadge difficulty={problem.difficulty} />}
+        </h2>
+        {problem.problemId && onToggleSave && (
+          <button
+            type="button"
+            onClick={onToggleSave}
+            disabled={saveLoading}
+            className="shrink-0 rounded-lg border border-slate-200 px-2 py-1 text-[11px] font-medium text-slate-600 transition hover:border-slate-300 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            aria-pressed={isSaved}
+          >
+            {isSaved ? t("unsaveProblem") : t("saveProblem")}
+          </button>
+        )}
+      </div>
 
       {problem.description && (
         <div className="mt-3 min-h-[5.75rem]">
