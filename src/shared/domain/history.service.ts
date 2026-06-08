@@ -2,7 +2,7 @@ import { STORAGE_KEYS } from "@/shared/constants/storage-keys";
 import { storageService } from "@/shared/storage";
 import type { RecentProblem } from "@/shared/types/persistence";
 
-const MAX_RECENT = 50;
+const MAX_RECENT = 3;
 
 async function loadRecentProblems(): Promise<RecentProblem[]> {
   return (await storageService.get<RecentProblem[]>(STORAGE_KEYS.recentProblems)) ?? [];
@@ -19,6 +19,11 @@ export async function addRecentProblem(
   const index = existing.findIndex((p) => p.problemId === entry.problemId);
 
   if (index === 0) {
+    const current = existing[0];
+    if (entry.url && entry.url !== current.url) {
+      const updated = [{ ...current, url: entry.url }, ...existing.slice(1)];
+      await persistRecentProblems(updated);
+    }
     return false;
   }
 

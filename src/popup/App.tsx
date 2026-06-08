@@ -65,6 +65,7 @@ function AppContent() {
           title: problem.title,
           difficulty: problem.difficulty,
           platform: problem.platform,
+          url: problem.url,
         },
       });
     }

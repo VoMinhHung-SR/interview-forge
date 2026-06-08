@@ -5,6 +5,7 @@ export interface RecentProblem {
   title: string;
   difficulty?: ProblemDifficulty | string;
   platform: PlatformId | string;
+  url?: string;
   viewedAt: number;
 }
 
@@ -13,6 +14,7 @@ export interface SavedProblem {
   title: string;
   difficulty?: ProblemDifficulty | string;
   platform: PlatformId | string;
+  url?: string;
   savedAt: number;
 }
 
@@ -34,6 +36,7 @@ export interface SaveProblemPayload {
   title: string;
   difficulty?: string;
   platform: string;
+  url?: string;
 }
 
 export interface SaveProblemResult {

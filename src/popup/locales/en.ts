@@ -61,6 +61,7 @@ export const en = {
   languageVi: "Vietnamese",
 
   recentProblems: "Recent Problems",
+  recentProblemNoUrl: "Open this problem once to restore its link",
   savedProblems: "Saved Problems",
   learningProfile: "Learning Profile",
   saveProblem: "Save",
