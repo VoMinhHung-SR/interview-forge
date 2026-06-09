@@ -29,3 +29,16 @@ export const DESCRIPTION_SELECTORS = [
   "div.elfjS",
   "div.xFUwe",
 ] as const;
+
+export const EDITOR_CONTAINER_SELECTORS = [
+  '[data-cy="code-area"]',
+  ".monaco-editor",
+  '[class*="monaco-editor"]',
+] as const;
+
+export const LANGUAGE_SELECTORS = [
+  '[data-cy="lang-select"]',
+  "#lang-select",
+  'button[id*="headlessui"]',
+  '[class*="lang-select"]',
+] as const;

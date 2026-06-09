@@ -8,6 +8,8 @@ import { AppHeader } from "./components/AppHeader";
 import { CoachPanel } from "./components/CoachPanel";
 import { PersistencePanel } from "./components/PersistencePanel";
 import { ProblemSummary } from "./components/ProblemSummary";
+import { SolutionAnalysisPanel } from "./components/SolutionAnalysisPanel";
+import { useSolutionAnalysis } from "./hooks/useSolutionAnalysis";
 
 function AppContent() {
   const { t, locale, setLocale, ready } = useTranslation();
@@ -17,6 +19,15 @@ function AppContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saveLoading, setSaveLoading] = useState(false);
+  const {
+    analysis: solutionAnalysis,
+    loading: solutionLoading,
+    error: solutionError,
+    analyze: analyzeSolution,
+  } = useSolutionAnalysis({
+    problemId: problem?.problemId,
+    locale,
+  });
 
   const loadProblem = useCallback(async () => {
     setLoading(true);
@@ -120,6 +131,16 @@ function AppContent() {
           <CoachPanel
             key={`${problem.url}-${locale}`}
             problem={problem}
+          />
+        )}
+
+        {problem && (
+          <SolutionAnalysisPanel
+            problem={problem}
+            analysis={solutionAnalysis}
+            loading={solutionLoading}
+            error={solutionError}
+            onAnalyze={(force) => void analyzeSolution(force)}
           />
         )}
 

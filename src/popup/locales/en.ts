@@ -69,6 +69,21 @@ export const en = {
   problemsViewed: "Problems Viewed",
   hintsRequested: "Hints Requested",
   topPatterns: "Top Patterns",
+
+  solutionAnalysisTitle: "Your Code Analysis",
+  solutionAnalysisSubtitle: "Pattern, complexity, and interview feedback on your solution",
+  solutionAnalyze: "Analyze Solution",
+  solutionReanalyze: "Re-analyze",
+  solutionCached: "Cached",
+  solutionYourCode: "Detected Approach",
+  solutionBottlenecks: "Bottlenecks",
+  solutionOptimizations: "Optimizations",
+  solutionEdgeCases: "Missed Edge Cases",
+  solutionInterviewFeedback: "Interview Feedback",
+  solutionLoading: "Analyzing your solution",
+  solutionLoadingRead: "Reading your code…",
+  solutionLoadingAnalyze: "Evaluating complexity…",
+  solutionLoadingContact: "Contacting Gemini…",
 } as const;
 
 export type TranslationKey = keyof typeof en;

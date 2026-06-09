@@ -13,4 +13,5 @@ export { ProblemHeader } from "./ProblemHeader";
 export { ProblemSummary } from "./ProblemSummary";
 export { ResponseCard } from "./ResponseCard";
 export { SkeletonLoader } from "./SkeletonLoader";
+export { SolutionAnalysisPanel } from "./SolutionAnalysisPanel";
 export { TranslationLoadingSkeleton } from "./TranslationLoadingSkeleton";

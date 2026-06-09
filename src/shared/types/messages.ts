@@ -5,6 +5,7 @@ import type {
   SaveProblemPayload,
   UnsaveProblemPayload,
 } from "./persistence";
+import type { AnalyzeSolutionRequest } from "./solution-analysis";
 import type { TranslateProblemRequest } from "./translation";
 
 /** Discriminated union of extension message payloads. */
@@ -26,7 +27,10 @@ export type ExtensionMessage =
   | { type: "UNSAVE_PROBLEM"; payload: UnsaveProblemPayload }
   | { type: "GET_HINT_SESSION"; payload: { problemId: string } }
   | { type: "UPDATE_HINT_SESSION"; payload: HintSession }
-  | { type: "GET_LEARNING_PROFILE" };
+  | { type: "GET_LEARNING_PROFILE" }
+  | { type: "GET_ANALYSIS_CONTEXT" }
+  | { type: "ANALYZE_SOLUTION"; payload?: AnalyzeSolutionRequest }
+  | { type: "GET_SOLUTION_ANALYSIS"; payload: { problemId: string } };
 
 export type ExtensionResponse<T = unknown> =
   | { ok: true; data: T }

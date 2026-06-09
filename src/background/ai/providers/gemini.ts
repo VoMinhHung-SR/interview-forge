@@ -8,6 +8,7 @@ import type {
 } from "./types";
 
 const DEFAULT_MODEL = "gemini-2.5-flash";
+const DEFAULT_TIMEOUT_MS = 15_000;
 
 function getGeminiModel(): string {
   const configured = import.meta.env.VITE_GEMINI_MODEL as string | undefined;
@@ -36,7 +37,7 @@ async function callGeminiModel(
         },
       }),
     },
-    15_000,
+    request.timeoutMs ?? DEFAULT_TIMEOUT_MS,
   );
 
   const body = await response.text();

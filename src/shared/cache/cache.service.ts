@@ -1,9 +1,16 @@
 import { STORAGE_KEYS } from "@/shared/constants/storage-keys";
 import { storageService } from "@/shared/storage";
 import type { AppLocale } from "@/shared/types";
+import type {
+  SolutionAnalysis,
+  SolutionCacheIndex,
+  SolutionLatestPointer,
+} from "@/shared/types/solution-analysis";
 import type { TranslationCacheEntry } from "@/shared/types/translation";
 
-const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const TRANSLATION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const SOLUTION_TTL_MS = 48 * 60 * 60 * 1000;
+const MAX_SOLUTION_CACHE_ENTRIES = 100;
 
 export async function getTranslation(
   problemId: string,
@@ -18,5 +25,91 @@ export async function saveTranslation(
   entry: TranslationCacheEntry,
 ): Promise<void> {
   const key = STORAGE_KEYS.translation(entry.problemId, entry.language);
-  await storageService.set(key, entry, { ttlMs: CACHE_TTL_MS });
+  await storageService.set(key, entry, { ttlMs: TRANSLATION_TTL_MS });
+}
+
+async function loadSolutionIndex(): Promise<SolutionCacheIndex> {
+  return (
+    (await storageService.get<SolutionCacheIndex>(
+      STORAGE_KEYS.solutionCacheIndex,
+    )) ?? { entries: [] }
+  );
+}
+
+async function persistSolutionIndex(index: SolutionCacheIndex): Promise<void> {
+  await storageService.set(STORAGE_KEYS.solutionCacheIndex, index);
+}
+
+async function pruneSolutionIndex(
+  index: SolutionCacheIndex,
+): Promise<SolutionCacheIndex> {
+  const sorted = [...index.entries].sort((a, b) => b.updatedAt - a.updatedAt);
+  const kept = sorted.slice(0, MAX_SOLUTION_CACHE_ENTRIES);
+  const removed = sorted.slice(MAX_SOLUTION_CACHE_ENTRIES);
+
+  await Promise.all(removed.map((entry) => storageService.remove(entry.cacheKey)));
+
+  return { entries: kept };
+}
+
+export async function getSolutionAnalysis(
+  problemId: string,
+  codeHash: string,
+): Promise<SolutionAnalysis | null> {
+  const key = STORAGE_KEYS.solutionAnalysis(problemId, codeHash);
+  return storageService.get<SolutionAnalysis>(key);
+}
+
+export async function saveSolutionAnalysis(
+  analysis: SolutionAnalysis,
+): Promise<void> {
+  const cacheKey = STORAGE_KEYS.solutionAnalysis(
+    analysis.problemId,
+    analysis.codeHash,
+  );
+
+  await storageService.set(cacheKey, analysis, { ttlMs: SOLUTION_TTL_MS });
+
+  const pointer: SolutionLatestPointer = {
+    problemId: analysis.problemId,
+    codeHash: analysis.codeHash,
+    cacheKey,
+    analyzedAt: Date.parse(analysis.generatedAt) || Date.now(),
+  };
+  await storageService.set(
+    STORAGE_KEYS.solutionLatest(analysis.problemId),
+    pointer,
+  );
+
+  const index = await loadSolutionIndex();
+  const without = index.entries.filter((entry) => entry.cacheKey !== cacheKey);
+  const updated: SolutionCacheIndex = {
+    entries: [
+      {
+        cacheKey,
+        problemId: analysis.problemId,
+        codeHash: analysis.codeHash,
+        updatedAt: Date.now(),
+      },
+      ...without,
+    ],
+  };
+  await persistSolutionIndex(await pruneSolutionIndex(updated));
+}
+
+export async function getLatestSolutionAnalysis(
+  problemId: string,
+): Promise<SolutionAnalysis | null> {
+  const pointer = await storageService.get<SolutionLatestPointer>(
+    STORAGE_KEYS.solutionLatest(problemId),
+  );
+  if (!pointer) return null;
+
+  const analysis = await storageService.get<SolutionAnalysis>(pointer.cacheKey);
+  if (!analysis) {
+    await storageService.remove(STORAGE_KEYS.solutionLatest(problemId));
+    return null;
+  }
+
+  return { ...analysis, cached: true };
 }

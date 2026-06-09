@@ -42,3 +42,16 @@ export type {
   UnsaveProblemPayload,
 } from "./persistence";
 export { createEmptyLearningProfile } from "./persistence";
+export type {
+  AnalysisContext,
+  AnalyzeSolutionRequest,
+  SolutionAnalysis,
+  SolutionAnalysisJsonPayload,
+  SolutionCacheIndex,
+  SolutionCacheIndexEntry,
+  SolutionCode,
+  SolutionEngineError,
+  SolutionEngineErrorCode,
+  SolutionEngineResult,
+  SolutionLatestPointer,
+} from "./solution-analysis";

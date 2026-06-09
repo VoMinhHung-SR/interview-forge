@@ -4,6 +4,7 @@ export {
   extractLeetCodeProblemContext,
   isLeetCodeProblemPage,
 } from "./extract-problem-context";
+export { extractSolutionCode } from "./extract-solution-code";
 export type {
   LeetCodeExtractedFields,
   LeetCodeExtractionErrorCode,
