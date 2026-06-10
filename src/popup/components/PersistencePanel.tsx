@@ -1,20 +1,16 @@
 import type {
   LearningProfile,
   ProblemDifficulty,
-  RecentProblem,
   SavedProblem,
 } from "@/shared/types";
 import { openProblemPage } from "@/shared/utils/problem-url";
 import { useTranslation } from "@/popup/hooks/useTranslation";
 import { DifficultyBadge } from "./DifficultyBadge";
 
-const MAX_RECENT_DISPLAY = 3;
-
 const SECTION_CLASS =
   "rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm dark:border-slate-700/80 dark:bg-slate-900";
 
 interface PersistencePanelProps {
-  recent: RecentProblem[];
   saved: SavedProblem[];
   profile: LearningProfile | null;
   loading: boolean;
@@ -25,25 +21,13 @@ function isProblemDifficulty(value: string | undefined): value is ProblemDifficu
   return value === "Easy" || value === "Medium" || value === "Hard";
 }
 
-function formatRelativeTime(timestamp: number, locale: string): string {
-  const diffMs = Date.now() - timestamp;
-  const minutes = Math.floor(diffMs / 60_000);
-  if (minutes < 1) return locale === "vi" ? "Vừa xong" : "Just now";
-  if (minutes < 60) return locale === "vi" ? `${minutes} phút trước` : `${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return locale === "vi" ? `${hours} giờ trước` : `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return locale === "vi" ? `${days} ngày trước` : `${days}d ago`;
-}
-
 export function PersistencePanel({
-  recent,
   saved,
   profile,
   loading,
   onUnsave,
 }: PersistencePanelProps) {
-  const { t, locale } = useTranslation();
+  const { t } = useTranslation();
 
   const topPatterns =
     profile ?
@@ -52,7 +36,6 @@ export function PersistencePanel({
         .slice(0, 5)
     : [];
 
-  const hasRecent = recent.length > 0;
   const hasSaved = saved.length > 0;
   const hasProfile =
     profile !== null &&
@@ -69,45 +52,12 @@ export function PersistencePanel({
     );
   }
 
-  if (!hasRecent && !hasSaved && !hasProfile) {
+  if (!hasSaved && !hasProfile) {
     return null;
   }
 
   return (
     <div className="space-y-3">
-      {hasRecent && (
-        <section className={SECTION_CLASS}>
-          <h3 className="text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
-            {t("recentProblems")}
-          </h3>
-          <ul className="mt-3 space-y-2">
-            {recent.slice(0, MAX_RECENT_DISPLAY).map((item) => (
-              <li key={item.problemId}>
-                <button
-                  type="button"
-                  disabled={!item.url}
-                  title={!item.url ? t("recentProblemNoUrl") : undefined}
-                  onClick={() => openProblemPage(item)}
-                  className="flex w-full items-start justify-between gap-2 rounded-lg border border-slate-100 px-3 py-2 text-left transition hover:border-slate-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:hover:bg-slate-800/60"
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-medium text-slate-800 dark:text-slate-100">
-                      {item.title}
-                    </span>
-                    <span className="mt-0.5 block text-[11px] text-slate-400">
-                      {formatRelativeTime(item.viewedAt, locale)}
-                    </span>
-                  </span>
-                  {isProblemDifficulty(item.difficulty) && (
-                    <DifficultyBadge difficulty={item.difficulty} />
-                  )}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
       {hasSaved && (
         <section className={SECTION_CLASS}>
           <h3 className="text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">

@@ -13,6 +13,8 @@ interface ProblemSummaryProps {
   isSaved?: boolean;
   onToggleSave?: () => void;
   saveLoading?: boolean;
+  /** Renders content only — parent supplies card chrome and header */
+  embedded?: boolean;
 }
 
 const PROBLEM_CARD_CLASS =
@@ -26,6 +28,7 @@ export function ProblemSummary({
   isSaved = false,
   onToggleSave,
   saveLoading = false,
+  embedded = false,
 }: ProblemSummaryProps) {
   const { t, locale } = useTranslation();
   const { displayDescription, loading: translationLoading } = useProblemTranslation(
@@ -34,23 +37,29 @@ export function ProblemSummary({
   );
 
   if (loading) {
+    const skeleton = (
+      <div className="space-y-2">
+        <div className="skeleton h-4 w-3/4 rounded-md" />
+        <div className="skeleton h-3 w-full rounded-md" />
+        <div className="skeleton h-3 w-5/6 rounded-md" />
+      </div>
+    );
+
+    if (embedded) return skeleton;
+
     return (
       <section className={PROBLEM_CARD_CLASS}>
         <p className="text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
           {t("problem")}
         </p>
-        <div className="mt-3 space-y-2">
-          <div className="skeleton h-4 w-3/4 rounded-md" />
-          <div className="skeleton h-3 w-full rounded-md" />
-          <div className="skeleton h-3 w-5/6 rounded-md" />
-        </div>
+        <div className="mt-3">{skeleton}</div>
       </section>
     );
   }
 
   if (error) {
-    return (
-      <section className="rounded-2xl border border-red-100 bg-red-50/60 p-5 dark:border-red-900/50 dark:bg-red-950/40">
+    const errorBody = (
+      <>
         <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
         <button
           type="button"
@@ -59,13 +68,21 @@ export function ProblemSummary({
         >
           {t("retry")}
         </button>
+      </>
+    );
+
+    if (embedded) return errorBody;
+
+    return (
+      <section className="rounded-2xl border border-red-100 bg-red-50/60 p-5 dark:border-red-900/50 dark:bg-red-950/40">
+        {errorBody}
       </section>
     );
   }
 
   if (!problem) {
-    return (
-      <section className={PROBLEM_CARD_CLASS}>
+    const emptyBody = (
+      <>
         <p className="text-sm text-slate-500 dark:text-slate-400">{t("noProblem")}</p>
         <button
           type="button"
@@ -74,8 +91,12 @@ export function ProblemSummary({
         >
           {t("refresh")}
         </button>
-      </section>
+      </>
     );
+
+    if (embedded) return emptyBody;
+
+    return <section className={PROBLEM_CARD_CLASS}>{emptyBody}</section>;
   }
 
   const exampleLabel =
@@ -83,13 +104,9 @@ export function ProblemSummary({
       t("exampleCount", { count: 1 })
     : t("exampleCount_plural", { count: problem.examples.length });
 
-  return (
-    <section className={PROBLEM_CARD_CLASS}>
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
-        {t("problem")}
-      </p>
-
-      <div className="mt-3 flex items-start justify-between gap-2">
+  const content = (
+    <>
+      <div className={`flex items-start justify-between gap-2 ${embedded ? "" : "mt-3"}`}>
         <h2 className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm font-semibold leading-snug text-slate-900 dark:text-slate-100">
           <span>{problem.title}</span>
           {problem.difficulty && <DifficultyBadge difficulty={problem.difficulty} />}
@@ -122,6 +139,17 @@ export function ProblemSummary({
           </span>
         </div>
       )}
+    </>
+  );
+
+  if (embedded) return content;
+
+  return (
+    <section className={PROBLEM_CARD_CLASS}>
+      <p className="text-xs font-medium uppercase tracking-wide text-slate-400 dark:text-slate-500">
+        {t("problem")}
+      </p>
+      <div className="mt-3">{content}</div>
     </section>
   );
 }

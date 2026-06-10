@@ -42,3 +42,18 @@ export const LANGUAGE_SELECTORS = [
   'button[id*="headlessui"]',
   '[class*="lang-select"]',
 ] as const;
+
+export const SUBMIT_BUTTON_SELECTORS = [
+  '[data-cy="submit-code-btn"]',
+  '[data-e2e-locator="console-submit-button"]',
+  "#submit_code_btn",
+  'button[type="submit"]',
+] as const;
+
+export const RESULT_PANEL_SELECTORS = [
+  '[data-e2e-locator="submission-result"]',
+  '[class*="submission-result"]',
+  '[class*="result-state"]',
+  "#result-state",
+  '[data-cy="submission-result"]',
+] as const;

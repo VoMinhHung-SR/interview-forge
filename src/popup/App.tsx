@@ -7,7 +7,7 @@ import { useTranslation } from "@/popup/hooks/useTranslation";
 import { AppHeader } from "./components/AppHeader";
 import { CoachPanel } from "./components/CoachPanel";
 import { PersistencePanel } from "./components/PersistencePanel";
-import { ProblemSummary } from "./components/ProblemSummary";
+import { ProblemHubPanel } from "./components/ProblemHubPanel";
 import { SolutionAnalysisPanel } from "./components/SolutionAnalysisPanel";
 import { useSolutionAnalysis } from "./hooks/useSolutionAnalysis";
 
@@ -24,6 +24,9 @@ function AppContent() {
     loading: solutionLoading,
     error: solutionError,
     analyze: analyzeSolution,
+    settings: analysisSettings,
+    settingsLoading: analysisSettingsLoading,
+    toggleAutoAnalyze,
   } = useSolutionAnalysis({
     problemId: problem?.problemId,
     locale,
@@ -109,18 +112,19 @@ function AppContent() {
       <div className="space-y-4">
         <AppHeader locale={locale} onLocaleChange={setLocale} />
 
-        <ProblemSummary
+        <ProblemHubPanel
           problem={problem}
-          loading={loading}
-          error={error}
-          onRefresh={loadProblem}
+          problemLoading={loading}
+          problemError={error}
+          onRefreshProblem={loadProblem}
           isSaved={isCurrentSaved}
           onToggleSave={() => void handleToggleSave()}
           saveLoading={saveLoading}
+          recent={recent}
+          recentLoading={persistenceLoading}
         />
 
         <PersistencePanel
-          recent={recent}
           saved={saved}
           profile={profile}
           loading={persistenceLoading}
@@ -140,7 +144,10 @@ function AppContent() {
             analysis={solutionAnalysis}
             loading={solutionLoading}
             error={solutionError}
+            autoAnalyzeOnSubmit={analysisSettings.autoAnalyzeOnSubmit}
+            settingsLoading={analysisSettingsLoading}
             onAnalyze={(force) => void analyzeSolution(force)}
+            onToggleAutoAnalyze={(enabled) => void toggleAutoAnalyze(enabled)}
           />
         )}
 

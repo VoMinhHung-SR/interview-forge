@@ -44,9 +44,11 @@ export type {
 export { createEmptyLearningProfile } from "./persistence";
 export type {
   AnalysisContext,
+  AnalysisSettings,
   AnalyzeSolutionRequest,
   SolutionAnalysis,
   SolutionAnalysisJsonPayload,
+  SolutionAnalysisMode,
   SolutionCacheIndex,
   SolutionCacheIndexEntry,
   SolutionCode,
@@ -54,4 +56,6 @@ export type {
   SolutionEngineErrorCode,
   SolutionEngineResult,
   SolutionLatestPointer,
+  SubmissionDetectedPayload,
+  SubmissionVerdict,
 } from "./solution-analysis";

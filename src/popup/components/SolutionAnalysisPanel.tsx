@@ -1,5 +1,6 @@
-import { useState, type ReactNode } from "react";
-import type { ProblemContext, SolutionAnalysis } from "@/shared/types";
+import { useEffect, useState, type ReactNode } from "react";
+import type { ProblemContext, SolutionAnalysis, SubmissionVerdict } from "@/shared/types";
+import type { TranslationKey } from "@/popup/locales/en";
 import { useTranslation } from "@/popup/hooks/useTranslation";
 import { ActionButton } from "./EmptyState";
 import { LoadingProgress } from "./LoadingProgress";
@@ -11,22 +12,92 @@ interface SolutionAnalysisPanelProps {
   analysis: SolutionAnalysis | null;
   loading: boolean;
   error: string | null;
+  autoAnalyzeOnSubmit: boolean;
+  settingsLoading: boolean;
   onAnalyze: (force?: boolean) => void;
+  onToggleAutoAnalyze: (enabled: boolean) => void;
 }
 
 type SectionId = "bottlenecks" | "optimizations" | "edgeCases" | "feedback";
 
-function BulletList({ items }: { items: string[] }) {
+function defaultExpandedForVerdict(
+  verdict: SubmissionVerdict | undefined,
+): Set<SectionId> {
+  if (!verdict) return new Set(["feedback"]);
+
+  switch (verdict) {
+    case "wrong_answer":
+      return new Set(["edgeCases", "feedback"]);
+    case "tle":
+      return new Set(["bottlenecks", "optimizations", "feedback"]);
+    case "accepted":
+      return new Set(["optimizations", "feedback"]);
+    case "runtime_error":
+    case "compile_error":
+      return new Set(["feedback", "edgeCases"]);
+    default:
+      return new Set(["feedback"]);
+  }
+}
+
+function resolveStrengths(analysis: SolutionAnalysis): string[] {
+  return analysis.interviewStrengths ?? [];
+}
+
+function resolveImprovements(analysis: SolutionAnalysis): string[] {
+  return analysis.interviewImprovements ?? [];
+}
+
+function feedbackItemCount(analysis: SolutionAnalysis): number {
+  const strengths = resolveStrengths(analysis);
+  const improvements = resolveImprovements(analysis);
+  if (strengths.length + improvements.length > 0) {
+    return strengths.length + improvements.length;
+  }
+  return analysis.interviewFeedback ? 1 : 0;
+}
+
+function BulletList({
+  items,
+  markerClass = "text-slate-800",
+}: {
+  items: string[];
+  markerClass?: string;
+}) {
   if (items.length === 0) {
     return <p className="text-sm text-slate-500">—</p>;
   }
 
   return (
-    <ul className="list-disc space-y-1.5 pl-4 text-sm text-slate-800">
-      {items.map((item) => (
-        <li key={item}>{item}</li>
+    <ul className={`list-disc space-y-2 pl-4 text-sm leading-relaxed ${markerClass}`}>
+      {items.map((item, index) => (
+        <li key={`${index}-${item.slice(0, 24)}`}>{item}</li>
       ))}
     </ul>
+  );
+}
+
+function FeedbackSubsection({
+  title,
+  accent,
+  children,
+}: {
+  title: string;
+  accent: "emerald" | "amber";
+  children: ReactNode;
+}) {
+  const styles =
+    accent === "emerald" ?
+      "border-emerald-100 bg-emerald-50/50"
+    : "border-amber-100 bg-amber-50/50";
+
+  return (
+    <div className={`rounded-lg border px-3 py-2.5 ${styles}`}>
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+        {title}
+      </p>
+      {children}
+    </div>
   );
 }
 
@@ -37,6 +108,7 @@ function ExpandableSection({
   expanded,
   onToggle,
   children,
+  defaultOpenHint,
 }: {
   id: SectionId;
   title: string;
@@ -44,34 +116,76 @@ function ExpandableSection({
   expanded: boolean;
   onToggle: (id: SectionId) => void;
   children: ReactNode;
+  defaultOpenHint?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200/80 bg-white">
+    <div
+      className={`rounded-xl border bg-white transition-colors ${
+        expanded ? "border-slate-200" : "border-slate-200/80"
+      }`}
+    >
       <button
         type="button"
         onClick={() => onToggle(id)}
         className="flex w-full items-center justify-between px-3.5 py-2.5 text-left"
+        aria-expanded={expanded}
       >
         <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
           {title}
           {count > 0 ? ` (${count})` : ""}
         </span>
-        <span className="text-xs text-slate-400">{expanded ? "−" : "+"}</span>
+        <span className="flex items-center gap-2 text-xs text-slate-400">
+          {defaultOpenHint && !expanded && (
+            <span className="rounded bg-violet-50 px-1.5 py-0.5 text-[10px] text-violet-600">
+              •
+            </span>
+          )}
+          {expanded ? "−" : "+"}
+        </span>
       </button>
-      {expanded && <div className="border-t border-slate-100 px-3.5 py-3">{children}</div>}
+      {expanded && (
+        <div className="space-y-3 border-t border-slate-100 px-3.5 py-3">{children}</div>
+      )}
     </div>
   );
 }
+
+const VERDICT_LABEL_KEYS: Record<SubmissionVerdict, TranslationKey> = {
+  accepted: "solutionVerdict_accepted",
+  wrong_answer: "solutionVerdict_wrong_answer",
+  tle: "solutionVerdict_tle",
+  runtime_error: "solutionVerdict_runtime_error",
+  compile_error: "solutionVerdict_compile_error",
+};
 
 export function SolutionAnalysisPanel({
   problem,
   analysis,
   loading,
   error,
+  autoAnalyzeOnSubmit,
+  settingsLoading,
   onAnalyze,
+  onToggleAutoAnalyze,
 }: SolutionAnalysisPanelProps) {
   const { t } = useTranslation();
-  const [expanded, setExpanded] = useState<Set<SectionId>>(new Set());
+  const [expanded, setExpanded] = useState<Set<SectionId>>(new Set(["feedback"]));
+  const [lastAutoExpandId, setLastAutoExpandId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!analysis) return;
+
+    const expandKey = `${analysis.problemId}-${analysis.codeHash}-${analysis.analysisMode}-${analysis.submissionVerdict ?? "manual"}-${analysis.generatedAt}`;
+
+    if (lastAutoExpandId === expandKey) return;
+
+    if (analysis.analysisMode === "submission") {
+      setExpanded(defaultExpandedForVerdict(analysis.submissionVerdict));
+    } else {
+      setExpanded(new Set(["feedback"]));
+    }
+    setLastAutoExpandId(expandKey);
+  }, [analysis, lastAutoExpandId]);
 
   if (problem.platform !== "leetcode") {
     return null;
@@ -92,21 +206,57 @@ export function SolutionAnalysisPanel({
     t("solutionLoadingContact"),
   ];
 
+  const modeLabel =
+    analysis?.analysisMode === "submission" && analysis.submissionVerdict ?
+      t(VERDICT_LABEL_KEYS[analysis.submissionVerdict])
+    : analysis ?
+      t("solutionModeManual")
+    : null;
+
+  const strengths = analysis ? resolveStrengths(analysis) : [];
+  const improvements = analysis ? resolveImprovements(analysis) : [];
+  const hasStructuredFeedback = strengths.length > 0 || improvements.length > 0;
+  const legacyFeedback = analysis?.interviewFeedback?.trim();
+
   return (
     <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
       <div className="mb-3 flex items-start justify-between gap-2">
-        <div>
+        <div className="min-w-0">
           <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
             {t("solutionAnalysisTitle")}
           </p>
-          <p className="mt-0.5 text-[11px] text-slate-500">{t("solutionAnalysisSubtitle")}</p>
+          <p className="mt-0.5 text-[11px] leading-snug text-slate-500">
+            {t("solutionAnalysisSubtitle")}
+          </p>
         </div>
-        {analysis?.cached && !loading && (
-          <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
-            {t("solutionCached")}
-          </span>
+        {(modeLabel || analysis?.cached) && !loading && (
+          <div className="flex shrink-0 flex-wrap justify-end gap-1">
+            {modeLabel && (
+              <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-medium text-violet-700">
+                {modeLabel}
+              </span>
+            )}
+            {analysis?.cached && (
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                {t("solutionCached")}
+              </span>
+            )}
+          </div>
         )}
       </div>
+
+      <label className="mb-3 flex cursor-pointer items-center gap-2.5 rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2.5 transition hover:border-slate-200">
+        <input
+          type="checkbox"
+          checked={autoAnalyzeOnSubmit}
+          disabled={settingsLoading}
+          onChange={(event) => onToggleAutoAnalyze(event.target.checked)}
+          className="h-3.5 w-3.5 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
+        />
+        <span className="text-xs leading-snug text-slate-600">
+          {t("solutionAutoAnalyzeOnSubmit")}
+        </span>
+      </label>
 
       <ActionButton
         label={analysis ? t("solutionReanalyze") : t("solutionAnalyze")}
@@ -134,20 +284,49 @@ export function SolutionAnalysisPanel({
       )}
 
       {analysis && !loading && (
-        <div className="mt-4 space-y-3">
+        <div className="mt-4 space-y-2.5">
           <ResponseCard title={t("solutionYourCode")} accent="violet">
-            <p className="font-medium text-slate-800">{analysis.pattern}</p>
-            <dl className="mt-2 grid grid-cols-2 gap-2 text-sm">
-              <div>
-                <dt className="text-xs text-slate-500">{t("time")}</dt>
-                <dd className="font-medium text-slate-800">{analysis.timeComplexity}</dd>
-              </div>
-              <div>
-                <dt className="text-xs text-slate-500">{t("space")}</dt>
-                <dd className="font-medium text-slate-800">{analysis.spaceComplexity}</dd>
-              </div>
-            </dl>
+            <p className="font-medium leading-snug text-slate-800">{analysis.pattern}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-100 bg-white/80 px-2.5 py-1 text-xs">
+                <span className="text-slate-500">{t("time")}</span>
+                <span className="font-semibold text-slate-800">{analysis.timeComplexity}</span>
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-100 bg-white/80 px-2.5 py-1 text-xs">
+                <span className="text-slate-500">{t("space")}</span>
+                <span className="font-semibold text-slate-800">{analysis.spaceComplexity}</span>
+              </span>
+            </div>
           </ResponseCard>
+
+          <ExpandableSection
+            id="feedback"
+            title={t("solutionInterviewFeedback")}
+            count={feedbackItemCount(analysis)}
+            expanded={expanded.has("feedback")}
+            onToggle={toggleSection}
+            defaultOpenHint
+          >
+            {hasStructuredFeedback ?
+              <div className="space-y-2.5">
+                {strengths.length > 0 && (
+                  <FeedbackSubsection title={t("solutionStrengths")} accent="emerald">
+                    <BulletList items={strengths} markerClass="text-emerald-950" />
+                  </FeedbackSubsection>
+                )}
+                {improvements.length > 0 && (
+                  <FeedbackSubsection title={t("solutionImprovements")} accent="amber">
+                    <BulletList items={improvements} markerClass="text-amber-950" />
+                  </FeedbackSubsection>
+                )}
+              </div>
+            : legacyFeedback ?
+              <div className="space-y-2">
+                <p className="text-sm leading-relaxed text-slate-800">{legacyFeedback}</p>
+                <p className="text-[11px] text-slate-400">{t("solutionLegacyFeedback")}</p>
+              </div>
+            : <p className="text-sm text-slate-500">—</p>}
+          </ExpandableSection>
 
           <ExpandableSection
             id="bottlenecks"
@@ -177,18 +356,6 @@ export function SolutionAnalysisPanel({
             onToggle={toggleSection}
           >
             <BulletList items={analysis.missedEdgeCases} />
-          </ExpandableSection>
-
-          <ExpandableSection
-            id="feedback"
-            title={t("solutionInterviewFeedback")}
-            count={analysis.interviewFeedback ? 1 : 0}
-            expanded={expanded.has("feedback")}
-            onToggle={toggleSection}
-          >
-            <p className="text-sm leading-relaxed text-slate-800">
-              {analysis.interviewFeedback || "—"}
-            </p>
           </ExpandableSection>
         </div>
       )}

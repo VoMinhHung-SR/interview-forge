@@ -10,6 +10,7 @@ export { ComplexityPanel } from "./ComplexityPanel";
 export { ExplainPanel } from "./ExplainPanel";
 export { PersistencePanel } from "./PersistencePanel";
 export { ProblemHeader } from "./ProblemHeader";
+export { ProblemHubPanel } from "./ProblemHubPanel";
 export { ProblemSummary } from "./ProblemSummary";
 export { ResponseCard } from "./ResponseCard";
 export { SkeletonLoader } from "./SkeletonLoader";

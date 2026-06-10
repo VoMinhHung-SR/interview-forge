@@ -60,7 +60,9 @@ export const en = {
   languageEn: "English",
   languageVi: "Vietnamese",
 
-  recentProblems: "Recent Problems",
+  recentProblems: "Recent",
+  recentProblemsEmpty: "No recent problems yet. Open a LeetCode problem to get started.",
+  showRecentProblems: "Show recent problems",
   recentProblemNoUrl: "Open this problem once to restore its link",
   savedProblems: "Saved Problems",
   learningProfile: "Learning Profile",
@@ -80,10 +82,20 @@ export const en = {
   solutionOptimizations: "Optimizations",
   solutionEdgeCases: "Missed Edge Cases",
   solutionInterviewFeedback: "Interview Feedback",
+  solutionStrengths: "Strengths",
+  solutionImprovements: "Areas to Improve",
+  solutionLegacyFeedback: "Previous format — re-analyze for structured feedback",
   solutionLoading: "Analyzing your solution",
   solutionLoadingRead: "Reading your code…",
   solutionLoadingAnalyze: "Evaluating complexity…",
   solutionLoadingContact: "Contacting Gemini…",
+  solutionAutoAnalyzeOnSubmit: "Auto-analyze after submit",
+  solutionModeManual: "Manual analysis",
+  solutionVerdict_accepted: "After submit · Accepted",
+  solutionVerdict_wrong_answer: "After submit · Wrong Answer",
+  solutionVerdict_tle: "After submit · Time Limit",
+  solutionVerdict_runtime_error: "After submit · Runtime Error",
+  solutionVerdict_compile_error: "After submit · Compile Error",
 } as const;
 
 export type TranslationKey = keyof typeof en;

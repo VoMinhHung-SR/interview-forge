@@ -5,6 +5,7 @@ import type {
   SolutionAnalysis,
   SolutionCacheIndex,
   SolutionLatestPointer,
+  SubmissionVerdict,
 } from "@/shared/types/solution-analysis";
 import type { TranslationCacheEntry } from "@/shared/types/translation";
 
@@ -60,13 +61,33 @@ export async function getSolutionAnalysis(
   return storageService.get<SolutionAnalysis>(key);
 }
 
+export async function getSubmissionAnalysis(
+  problemId: string,
+  codeHash: string,
+  verdict: SubmissionVerdict,
+): Promise<SolutionAnalysis | null> {
+  const key = STORAGE_KEYS.solutionSubmission(problemId, codeHash, verdict);
+  return storageService.get<SolutionAnalysis>(key);
+}
+
+function resolveCacheKey(analysis: SolutionAnalysis): string {
+  if (
+    analysis.analysisMode === "submission" &&
+    analysis.submissionVerdict
+  ) {
+    return STORAGE_KEYS.solutionSubmission(
+      analysis.problemId,
+      analysis.codeHash,
+      analysis.submissionVerdict,
+    );
+  }
+  return STORAGE_KEYS.solutionAnalysis(analysis.problemId, analysis.codeHash);
+}
+
 export async function saveSolutionAnalysis(
   analysis: SolutionAnalysis,
 ): Promise<void> {
-  const cacheKey = STORAGE_KEYS.solutionAnalysis(
-    analysis.problemId,
-    analysis.codeHash,
-  );
+  const cacheKey = resolveCacheKey(analysis);
 
   await storageService.set(cacheKey, analysis, { ttlMs: SOLUTION_TTL_MS });
 
@@ -75,6 +96,8 @@ export async function saveSolutionAnalysis(
     codeHash: analysis.codeHash,
     cacheKey,
     analyzedAt: Date.parse(analysis.generatedAt) || Date.now(),
+    analysisMode: analysis.analysisMode,
+    submissionVerdict: analysis.submissionVerdict,
   };
   await storageService.set(
     STORAGE_KEYS.solutionLatest(analysis.problemId),

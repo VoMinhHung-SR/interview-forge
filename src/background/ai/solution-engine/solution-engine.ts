@@ -4,11 +4,14 @@ import type { AppLocale } from "@/shared/types";
 import type {
   SolutionAnalysis,
   SolutionAnalysisJsonPayload,
+  SolutionAnalysisMode,
   SolutionCode,
   SolutionEngineResult,
+  SubmissionVerdict,
 } from "@/shared/types/solution-analysis";
 import {
   buildManualAnalysisPrompt,
+  buildSubmissionAnalysisPrompt,
   SOLUTION_JSON_SCHEMA,
   SOLUTION_SYSTEM_PROMPT,
 } from "./prompts";
@@ -20,17 +23,24 @@ export interface SolutionEngineOptions {
   provider: AiProvider;
 }
 
+interface ProblemInput {
+  title: string;
+  description: string;
+  examples: Array<{ input: string; output: string; explanation?: string }>;
+  constraints?: string[];
+}
+
 interface AnalyzeManualInput {
-  problem: {
-    title: string;
-    description: string;
-    examples: Array<{ input: string; output: string; explanation?: string }>;
-    constraints?: string[];
-  };
+  problem: ProblemInput;
   solution: SolutionCode;
   problemId: string;
   codeHash: string;
   language?: AppLocale;
+}
+
+interface AnalyzeSubmissionInput extends AnalyzeManualInput {
+  verdict: SubmissionVerdict;
+  resultSnippet?: string;
 }
 
 function normalizeLocale(value: string | undefined, fallback: AppLocale): AppLocale {
@@ -56,6 +66,8 @@ function normalizePayload(
     codeHash: string;
     fallbackLocale: AppLocale;
     model: string;
+    analysisMode: SolutionAnalysisMode;
+    submissionVerdict?: SubmissionVerdict;
   },
 ): SolutionAnalysis {
   return {
@@ -66,8 +78,11 @@ function normalizePayload(
     bottlenecks: asStringArray(payload.bottlenecks),
     optimizations: asStringArray(payload.optimizations),
     missedEdgeCases: asStringArray(payload.missedEdgeCases),
-    interviewFeedback: payload.interviewFeedback?.trim() || "",
-    analysisMode: "manual",
+    interviewStrengths: asStringArray(payload.interviewStrengths),
+    interviewImprovements: asStringArray(payload.interviewImprovements),
+    interviewFeedback: payload.interviewFeedback?.trim() || undefined,
+    analysisMode: meta.analysisMode,
+    submissionVerdict: meta.submissionVerdict,
     generatedAt: new Date().toISOString(),
     model: meta.model,
     codeHash: meta.codeHash,
@@ -79,7 +94,12 @@ function validatePayload(payload: SolutionAnalysisJsonPayload): string | null {
   if (!payload.pattern?.trim()) return "Missing pattern";
   if (!payload.timeComplexity?.trim()) return "Missing timeComplexity";
   if (!payload.spaceComplexity?.trim()) return "Missing spaceComplexity";
-  if (!payload.interviewFeedback?.trim()) return "Missing interviewFeedback";
+  const strengths = asStringArray(payload.interviewStrengths);
+  const improvements = asStringArray(payload.interviewImprovements);
+  const legacy = payload.interviewFeedback?.trim();
+  if (strengths.length === 0 && improvements.length === 0 && !legacy) {
+    return "Missing interviewStrengths and interviewImprovements";
+  }
   return null;
 }
 
@@ -98,6 +118,48 @@ export class SolutionAnalysisEngine {
       locale,
     );
 
+    return this.runAnalysis(userPrompt, {
+      problemId: input.problemId,
+      codeHash: input.codeHash,
+      fallbackLocale: locale,
+      analysisMode: "manual",
+      temperature: 0.3,
+    });
+  }
+
+  async analyzeSubmission(
+    input: AnalyzeSubmissionInput,
+  ): Promise<SolutionEngineResult> {
+    const locale = input.language ?? "en";
+    const userPrompt = buildSubmissionAnalysisPrompt(
+      input.problem,
+      input.solution,
+      input.verdict,
+      locale,
+      input.resultSnippet,
+    );
+
+    return this.runAnalysis(userPrompt, {
+      problemId: input.problemId,
+      codeHash: input.codeHash,
+      fallbackLocale: locale,
+      analysisMode: "submission",
+      submissionVerdict: input.verdict,
+      temperature: 0.4,
+    });
+  }
+
+  private async runAnalysis(
+    userPrompt: string,
+    meta: {
+      problemId: string;
+      codeHash: string;
+      fallbackLocale: AppLocale;
+      analysisMode: SolutionAnalysisMode;
+      submissionVerdict?: SubmissionVerdict;
+      temperature: number;
+    },
+  ): Promise<SolutionEngineResult> {
     let lastError = "Invalid AI response";
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
@@ -109,7 +171,7 @@ export class SolutionAnalysisEngine {
       const completion = await this.provider.complete({
         systemPrompt: SOLUTION_SYSTEM_PROMPT,
         userPrompt: `${userPrompt}${retrySuffix}\n\nSchema:\n${SOLUTION_JSON_SCHEMA}`,
-        temperature: 0.3,
+        temperature: meta.temperature,
         responseFormat: "json",
         timeoutMs: SOLUTION_TIMEOUT_MS,
       } satisfies AiCompletionRequest);
@@ -140,10 +202,12 @@ export class SolutionAnalysisEngine {
         return {
           success: true,
           data: normalizePayload(parsed, {
-            problemId: input.problemId,
-            codeHash: input.codeHash,
-            fallbackLocale: locale,
+            problemId: meta.problemId,
+            codeHash: meta.codeHash,
+            fallbackLocale: meta.fallbackLocale,
             model: completion.model,
+            analysisMode: meta.analysisMode,
+            submissionVerdict: meta.submissionVerdict,
           }),
         };
       } catch (error) {

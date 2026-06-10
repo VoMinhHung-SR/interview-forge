@@ -1,6 +1,15 @@
 import type { AppLocale } from "./hints";
 import type { ProblemContext } from "./problem-context";
 
+export type SubmissionVerdict =
+  | "accepted"
+  | "wrong_answer"
+  | "tle"
+  | "runtime_error"
+  | "compile_error";
+
+export type SolutionAnalysisMode = "manual" | "submission";
+
 export interface SolutionCode {
   code: string;
   language: string;
@@ -20,8 +29,12 @@ export interface SolutionAnalysis {
   bottlenecks: string[];
   optimizations: string[];
   missedEdgeCases: string[];
-  interviewFeedback: string;
-  analysisMode: "manual";
+  interviewStrengths: string[];
+  interviewImprovements: string[];
+  /** @deprecated Legacy single-paragraph feedback from older cache entries */
+  interviewFeedback?: string;
+  analysisMode: SolutionAnalysisMode;
+  submissionVerdict?: SubmissionVerdict;
   generatedAt: string;
   model: string;
   codeHash: string;
@@ -34,6 +47,23 @@ export interface AnalyzeSolutionRequest {
   force?: boolean;
 }
 
+export interface SubmissionDetectedPayload {
+  problemId: string;
+  verdict: SubmissionVerdict;
+  solution: SolutionCode;
+  problem: {
+    title: string;
+    description: string;
+    examples: Array<{ input: string; output: string; explanation?: string }>;
+    constraints?: string[];
+  };
+  resultSnippet?: string;
+}
+
+export interface AnalysisSettings {
+  autoAnalyzeOnSubmit: boolean;
+}
+
 export interface SolutionAnalysisJsonPayload {
   language?: string;
   pattern?: string;
@@ -42,6 +72,8 @@ export interface SolutionAnalysisJsonPayload {
   bottlenecks?: string[];
   optimizations?: string[];
   missedEdgeCases?: string[];
+  interviewStrengths?: string[];
+  interviewImprovements?: string[];
   interviewFeedback?: string;
 }
 
@@ -67,6 +99,8 @@ export interface SolutionLatestPointer {
   codeHash: string;
   cacheKey: string;
   analyzedAt: number;
+  analysisMode?: SolutionAnalysisMode;
+  submissionVerdict?: SubmissionVerdict;
 }
 
 export interface SolutionCacheIndexEntry {
