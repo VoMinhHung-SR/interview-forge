@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from "react";
 import { sendMessage } from "@/shared/messaging";
 import type {
   HintEngineResponse,
@@ -20,6 +20,10 @@ interface CoachPanelProps {
   onAnalysis?: (analysis: HintEngineResponse["analysis"]) => void;
 }
 
+export interface CoachPanelHandle {
+  requestHint: () => void;
+}
+
 type LoadingAction = "hint" | "pattern" | "complexity" | null;
 
 const HINT_REQUEST_TIMEOUT_MS = 90_000;
@@ -29,6 +33,20 @@ const HINT_LEVEL_SUBLABELS: Record<HintLevel, "hintLevelAbstract" | "hintLevelSp
   2: "hintLevelSpecific",
   3: "hintLevelDirection",
 };
+
+function HintIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className="mx-auto mb-2 h-8 w-8 text-brand-500"
+      aria-hidden
+    >
+      <path d="M12 .75a8.25 8.25 0 00-4.135 15.39c.686.398 1.115 1.008 1.134 1.623a.75.75 0 00.573.74 48.507 48.507 0 003.478.397.75.75 0 00.522-1.395A6.375 6.375 0 0118.75 9V6.375c0-3.04-2.463-5.5-5.5-5.5-3.037 0-5.5 2.46-5.5 5.5v2.625c0 .621-.504 1.125-1.125 1.125H5.25A2.25 2.25 0 003 11.625v.375c0 2.9 2.35 5.25 5.25 5.25h.75v1.125c0 .621.504 1.125 1.125 1.125h1.5a.75.75 0 001.125-.659l.128-1.023A9.75 9.75 0 0012 21.75c5.385 0 9.75-4.365 9.75-9.75S17.385 2.25 12 2.25z" />
+    </svg>
+  );
+}
 
 function extractHintTexts(data: HintEngineResponse, count: number): string[] {
   return data.hints
@@ -76,7 +94,8 @@ function buildResponseFromSession(
   };
 }
 
-export function CoachPanel({ problem, onAnalysis }: CoachPanelProps) {
+export const CoachPanel = forwardRef<CoachPanelHandle, CoachPanelProps>(
+  function CoachPanel({ problem, onAnalysis }, ref) {
   const { t, locale } = useTranslation();
   const [response, setResponse] = useState<HintEngineResponse | null>(null);
   const [visibleHintCount, setVisibleHintCount] = useState(0);
@@ -208,6 +227,10 @@ export function CoachPanel({ problem, onAnalysis }: CoachPanelProps) {
     void fetchAnalysis("hint");
   }
 
+  useImperativeHandle(ref, () => ({
+    requestHint: handleGetHint,
+  }));
+
   function handleAnalyzePattern() {
     void fetchAnalysis("pattern");
   }
@@ -227,13 +250,12 @@ export function CoachPanel({ problem, onAnalysis }: CoachPanelProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-coach-panel>
       {!hasStarted && !loading && (
-        <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
-          <p className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-400">
-            {t("actions")}
-          </p>
-          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 p-4 text-center">
+        <section className="card">
+          <p className="mb-3 section-title">{t("actions")}</p>
+          <div className="text-center">
+            <HintIcon />
             <p className="text-sm font-medium text-slate-800">{t("emptyTitle")}</p>
             <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
               {t("emptySubtitle")}
@@ -263,10 +285,8 @@ export function CoachPanel({ problem, onAnalysis }: CoachPanelProps) {
       )}
 
       {hasStarted && (
-        <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm">
-          <p className="mb-3 text-xs font-medium uppercase tracking-wide text-slate-400">
-            {t("actions")}
-          </p>
+        <section className="card">
+          <p className="mb-3 section-title">{t("actions")}</p>
           <div className="flex flex-col gap-2">
             {(canRequestMoreHints || visibleHintCount === 0) && (
               <ActionButton
@@ -324,9 +344,7 @@ export function CoachPanel({ problem, onAnalysis }: CoachPanelProps) {
 
       {(visibleHints.length > 0 || showPattern || showComplexity) && !loading && (
         <section className="space-y-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-            {t("response")}
-          </p>
+          <p className="section-title">{t("response")}</p>
 
           {showPattern && response?.analysis.pattern && (
             <ResponseCard title={t("pattern")} accent="violet">
@@ -370,14 +388,14 @@ export function CoachPanel({ problem, onAnalysis }: CoachPanelProps) {
       )}
     </div>
   );
-}
+});
 
 function HintItem({ hint }: { hint: HintLevelContent }) {
   const { t } = useTranslation();
   const sublabel = t(HINT_LEVEL_SUBLABELS[hint.level]);
 
   return (
-    <div className="rounded-lg border border-blue-100/80 bg-white/70 p-3">
+    <div className="hint-reveal rounded-lg border border-blue-100/80 bg-white/70 p-3">
       <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-blue-700/80">
         {t("hintLevel", { level: hint.level })} — {sublabel}
       </p>

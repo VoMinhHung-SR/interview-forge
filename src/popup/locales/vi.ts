@@ -84,6 +84,7 @@ export const vi: Record<TranslationKey, string> = {
   solutionBottlenecks: "Điểm nghẽn",
   solutionOptimizations: "Tối ưu hóa",
   solutionEdgeCases: "Edge case thiếu",
+  solutionRecommended: "Đề xuất",
   solutionInterviewFeedback: "Nhận xét phỏng vấn",
   solutionStrengths: "Ưu điểm",
   solutionImprovements: "Điểm cần cải thiện",

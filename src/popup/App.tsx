@@ -1,14 +1,15 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { sendMessage } from "@/shared/messaging";
 import type { ProblemContext } from "@/shared/types";
 import { LanguageProvider } from "@/popup/hooks/useLanguage";
 import { usePersistence } from "@/popup/hooks/usePersistence";
 import { useTranslation } from "@/popup/hooks/useTranslation";
 import { AppHeader } from "./components/AppHeader";
-import { CoachPanel } from "./components/CoachPanel";
+import { CoachPanel, type CoachPanelHandle } from "./components/CoachPanel";
 import { PersistencePanel } from "./components/PersistencePanel";
 import { ProblemHubPanel } from "./components/ProblemHubPanel";
 import { SolutionAnalysisPanel } from "./components/SolutionAnalysisPanel";
+import { StickyActionBar } from "./components/StickyActionBar";
 import { useSolutionAnalysis } from "./hooks/useSolutionAnalysis";
 
 function AppContent() {
@@ -19,6 +20,9 @@ function AppContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saveLoading, setSaveLoading] = useState(false);
+  const [stickyVisible, setStickyVisible] = useState(false);
+  const coachRef = useRef<CoachPanelHandle>(null);
+  const coachSentinelRef = useRef<HTMLDivElement>(null);
   const {
     analysis: solutionAnalysis,
     loading: solutionLoading,
@@ -55,6 +59,22 @@ function AppContent() {
   useEffect(() => {
     void loadProblem();
   }, [loadProblem]);
+
+  useEffect(() => {
+    const sentinel = coachSentinelRef.current;
+    if (!sentinel || !problem) {
+      setStickyVisible(false);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setStickyVisible(!entry.isIntersecting),
+      { threshold: 0, rootMargin: "-8px 0px 0px 0px" },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [problem]);
 
   const isCurrentSaved =
     problem?.problemId ?
@@ -109,6 +129,14 @@ function AppContent() {
 
   return (
     <div className="w-[26rem] bg-slate-50 p-4">
+      {problem && (
+        <StickyActionBar
+          problemTitle={problem.title}
+          visible={stickyVisible}
+          onGetHint={() => coachRef.current?.requestHint()}
+        />
+      )}
+
       <div className="space-y-4">
         <AppHeader locale={locale} onLocaleChange={setLocale} />
 
@@ -132,10 +160,14 @@ function AppContent() {
         />
 
         {problem && (
-          <CoachPanel
-            key={`${problem.url}-${locale}`}
-            problem={problem}
-          />
+          <>
+            <div ref={coachSentinelRef} aria-hidden className="h-0" />
+            <CoachPanel
+              ref={coachRef}
+              key={`${problem.url}-${locale}`}
+              problem={problem}
+            />
+          </>
         )}
 
         {problem && (

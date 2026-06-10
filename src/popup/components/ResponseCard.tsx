@@ -22,9 +22,7 @@ export function ResponseCard({
     <article
       className={`rounded-xl border p-3.5 ${accentStyles[accent]}`}
     >
-      <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-        {title}
-      </h3>
+      <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
       <div className="mt-2 text-sm leading-relaxed text-slate-800">{children}</div>
     </article>
   );

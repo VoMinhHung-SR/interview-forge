@@ -81,6 +81,7 @@ export const en = {
   solutionBottlenecks: "Bottlenecks",
   solutionOptimizations: "Optimizations",
   solutionEdgeCases: "Missed Edge Cases",
+  solutionRecommended: "Suggested",
   solutionInterviewFeedback: "Interview Feedback",
   solutionStrengths: "Strengths",
   solutionImprovements: "Areas to Improve",
