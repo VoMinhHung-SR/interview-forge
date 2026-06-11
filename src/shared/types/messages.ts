@@ -1,5 +1,5 @@
 import type { ProblemContext } from "./problem-context";
-import type { GenerateHintsRequest, HintLevel } from "./hints";
+import type { GenerateHintsRequest } from "./hints";
 import type {
   HintSession,
   SaveProblemPayload,
@@ -19,7 +19,7 @@ export type ExtensionMessage =
   | { type: "PROBLEM_CONTEXT"; payload: ProblemContext | null }
   | {
       type: "GENERATE_HINTS";
-      payload: GenerateHintsRequest & { level?: HintLevel };
+      payload: GenerateHintsRequest;
     }
   | {
       type: "TRANSLATE_PROBLEM";

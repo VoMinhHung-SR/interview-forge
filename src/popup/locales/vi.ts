@@ -22,7 +22,9 @@ export const vi: Record<TranslationKey, string> = {
 
   actions: "Hành động",
   getHint: "Gợi ý",
-  nextHint: "Gợi ý tiếp (Cấp {{level}})",
+  nextHint: "Gợi ý tiếp",
+  reviewSolution: "Nhận xét code",
+  nextStepReview: "Đã có code? Bấm Nhận xét code để nhận feedback.",
   analyzePattern: "Phân tích pattern",
   complexity: "Độ phức tạp",
   generating: "Đang tạo…",
@@ -40,8 +42,8 @@ export const vi: Record<TranslationKey, string> = {
 
   emptyTitle: "Cần trợ giúp giải bài này?",
   emptySubtitle:
-    "Nhận gợi ý từng bước, phân tích pattern và độ phức tạp — không tiết lộ lời giải hoàn chỉnh.",
-  allHintsShown: "Đã hiển thị đủ 3 cấp gợi ý. Hãy thử tự giải tiếp!",
+    "Nhận gợi ý từng bước và nhận xét code — không tiết lộ lời giải hoàn chỉnh.",
+  allHintsShown: "Đã đủ gợi ý — thử code rồi nhận xét lời giải.",
 
   loadingHint: "Đang tạo gợi ý",
   loadingPattern: "Đang phân tích pattern",

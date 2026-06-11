@@ -20,7 +20,9 @@ export const en = {
 
   actions: "Actions",
   getHint: "Get Hint",
-  nextHint: "Next Hint (Level {{level}})",
+  nextHint: "Next Hint",
+  reviewSolution: "Review Code",
+  nextStepReview: "Have code? Tap Review Code for feedback.",
   analyzePattern: "Analyze Pattern",
   complexity: "Complexity",
   generating: "Generating…",
@@ -37,8 +39,9 @@ export const en = {
   space: "Space",
 
   emptyTitle: "Need help solving this problem?",
-  emptySubtitle: "Get progressive hints, pattern analysis, and complexity — without spoiling the full solution.",
-  allHintsShown: "All hint levels shown. Try solving from here!",
+  emptySubtitle:
+    "Get step-by-step hints and code feedback — without spoiling the full solution.",
+  allHintsShown: "Enough hints for now — try coding, then review your solution.",
 
   loadingHint: "Generating hint",
   loadingPattern: "Analyzing pattern",

@@ -2,8 +2,6 @@ import { STORAGE_KEYS } from "@/shared/constants/storage-keys";
 import { storageService } from "@/shared/storage";
 import type { HintSession } from "@/shared/types/persistence";
 
-const MAX_LEVEL = 3;
-
 export async function getSession(problemId: string): Promise<HintSession | null> {
   return storageService.get<HintSession>(STORAGE_KEYS.hintSession(problemId));
 }
@@ -11,7 +9,7 @@ export async function getSession(problemId: string): Promise<HintSession | null>
 export async function saveSession(session: HintSession): Promise<HintSession> {
   const normalized: HintSession = {
     ...session,
-    currentLevel: Math.min(Math.max(session.currentLevel, 0), MAX_LEVEL),
+    currentLevel: Math.max(session.currentLevel, 0),
     updatedAt: Date.now(),
   };
   await storageService.set(STORAGE_KEYS.hintSession(session.problemId), normalized);
@@ -30,10 +28,10 @@ export async function incrementLevel(
       updatedAt: Date.now(),
     };
 
-  const nextLevel = Math.min(existing.currentLevel + 1, MAX_LEVEL);
+  const nextLevel = existing.currentLevel + 1;
   const hints = [...existing.hints];
 
-  if (hintText !== undefined && hints.length < nextLevel) {
+  if (hintText !== undefined) {
     hints.push(hintText);
   }
 

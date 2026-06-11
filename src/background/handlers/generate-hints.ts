@@ -17,24 +17,16 @@ registerHandler("GENERATE_HINTS", async (message) => {
     };
   }
 
-  const { level, ...request } = message.payload;
-
-  const result =
-    level ?
-      await engine.generateHintLevel(request, level)
-    : await engine.generateHints(request);
+  const result = await engine.generateNextHint(message.payload);
 
   if (!result.success) {
     return { ok: false, error: result.error.message };
   }
 
-  const hasHints = result.data.hints.some((hint) => hint.text.length > 0);
-  if (level !== undefined || hasHints) {
-    await trackHintRequest();
-  }
+  await trackHintRequest();
 
   const pattern = result.data.analysis.pattern?.trim();
-  if (pattern) {
+  if (pattern && pattern !== "Unknown") {
     await trackPattern(pattern);
   }
 

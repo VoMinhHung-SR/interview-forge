@@ -1,18 +1,16 @@
 import type { AiCompletionRequest, AiProvider } from "@/background/ai/providers/types";
 import {
-  normalizeAnalysisPayload,
-  normalizeHintPayload,
+  normalizeMetaPayload,
   parseHintResponse,
   validateHintPayload,
 } from "./guardrails";
-import { toThreeHintTuple } from "./normalize";
 import { buildHintUserPrompt, MENTOR_SYSTEM_PROMPT } from "./prompts";
 import type {
   GenerateHintsRequest,
   HintEngineResponse,
   HintEngineResult,
-  HintLevel,
 } from "@/shared/types/hints";
+import { MAX_HINTS } from "@/shared/types/hints";
 
 const MAX_RETRIES = 2;
 
@@ -21,14 +19,7 @@ export interface HintEngineOptions {
 }
 
 /**
- * Hint Engine — generates progressive mentor hints without revealing solutions.
- *
- * Flow:
- * 1. Build mentor prompt from problem context
- * 2. Call AI provider
- * 3. Parse structured JSON response
- * 4. Run guardrails (reject code, full solutions)
- * 5. Retry with stricter instructions if guardrails fail
+ * Hint Engine — generates one concise incremental hint per request.
  */
 export class HintEngine {
   private provider: AiProvider;
@@ -37,30 +28,26 @@ export class HintEngine {
     this.provider = options.provider;
   }
 
-  /** Generate all three hint levels in one structured JSON response. */
-  async generateHints(request: GenerateHintsRequest): Promise<HintEngineResult> {
-    return this.runGeneration(request, 3);
-  }
+  async generateNextHint(request: GenerateHintsRequest): Promise<HintEngineResult> {
+    const nextIndex = (request.previousHints?.length ?? 0) + 1;
 
-  /** Generate hints up to a specific level (progressive mode). */
-  async generateHintLevel(
-    request: GenerateHintsRequest,
-    level: HintLevel,
-  ): Promise<HintEngineResult> {
-    return this.runGeneration({ ...request, maxLevel: level }, level);
-  }
+    if (nextIndex > MAX_HINTS) {
+      return {
+        success: false,
+        error: {
+          code: "INVALID_AI_RESPONSE",
+          message: `Maximum of ${MAX_HINTS} hints reached.`,
+        },
+      };
+    }
 
-  private async runGeneration(
-    request: GenerateHintsRequest,
-    targetLevel: HintLevel,
-  ): Promise<HintEngineResult> {
     let lastViolations: string[] = [];
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       const userPrompt = buildHintUserPrompt(request);
       const strictSuffix =
         attempt > 0 ?
-          `\n\nRETRY ${attempt}: Previous response was rejected because: ${lastViolations.join("; ")}. Be more abstract. Ask questions only. No code.`
+          `\n\nRETRY ${attempt}: Previous response was rejected because: ${lastViolations.join("; ")}. Be more concise and specific. One short sentence. No code.`
         : "";
 
       const completion = await this.provider.complete({
@@ -87,23 +74,16 @@ export class HintEngine {
           };
         }
 
-        const normalized = normalizeHintPayload(payload);
-        const tuple = toThreeHintTuple(normalized, targetLevel);
-
-        if (!tuple) {
-          return {
-            success: false,
-            error: {
-              code: "INVALID_AI_RESPONSE",
-              message: "AI response missing required hint levels.",
-            },
-          };
-        }
+        const hintText = payload.hint!.trim();
+        const isFirstHint = nextIndex === 1;
+        const aiCanContinue = payload.canContinue !== false;
+        const canContinue = aiCanContinue && nextIndex < MAX_HINTS;
 
         const response: HintEngineResponse = {
           problemTitle: request.problem.title,
-          analysis: normalizeAnalysisPayload(payload, request.language),
-          hints: tuple,
+          hint: { index: nextIndex, text: hintText },
+          canContinue,
+          analysis: normalizeMetaPayload(payload, isFirstHint),
           guardrailPassed: true,
           generatedAt: new Date().toISOString(),
           model: completion.model,

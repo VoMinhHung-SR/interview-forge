@@ -17,12 +17,10 @@ export type {
   HintEngineJsonPayload,
   HintEngineResponse,
   HintEngineResult,
-  HintLevel,
-  HintLevelContent,
-  MentorAnalysis,
-  MentorComplexity,
+  HintStep,
+  MentorMeta,
 } from "./hints";
-export { HINT_LEVEL_LABELS } from "./hints";
+export { MAX_HINTS } from "./hints";
 export type {
   TranslateProblemRequest,
   TranslateProblemResponse,

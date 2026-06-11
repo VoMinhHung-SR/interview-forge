@@ -1,14 +1,23 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useState,
+  type ReactNode,
+} from "react";
 import { sendMessage } from "@/shared/messaging";
 import type {
   HintEngineResponse,
-  HintLevel,
-  HintLevelContent,
   HintSession,
+  HintStep,
   ProblemContext,
+  SolutionAnalysis,
+  SubmissionVerdict,
 } from "@/shared/types";
-import { HINT_LEVEL_LABELS } from "@/shared/types";
+import { MAX_HINTS } from "@/shared/types";
 import { withTimeout } from "@/shared/utils/timeout";
+import type { TranslationKey } from "@/popup/locales/en";
 import { useTranslation } from "@/popup/hooks/useTranslation";
 import { ActionButton } from "./EmptyState";
 import { ResponseCard } from "./ResponseCard";
@@ -17,21 +26,30 @@ import { LoadingProgress } from "./LoadingProgress";
 
 interface CoachPanelProps {
   problem: ProblemContext;
-  onAnalysis?: (analysis: HintEngineResponse["analysis"]) => void;
+  solutionAnalysis: SolutionAnalysis | null;
+  solutionLoading: boolean;
+  solutionError: string | null;
+  autoAnalyzeOnSubmit: boolean;
+  analysisSettingsLoading: boolean;
+  onAnalyzeSolution: (force?: boolean) => void;
+  onToggleAutoAnalyze: (enabled: boolean) => void;
 }
 
 export interface CoachPanelHandle {
   requestHint: () => void;
 }
 
-type LoadingAction = "hint" | "pattern" | "complexity" | null;
+type LoadingAction = "hint" | "review" | null;
+type FeedbackSectionId = "bottlenecks" | "optimizations" | "edgeCases" | "feedback";
 
 const HINT_REQUEST_TIMEOUT_MS = 90_000;
 
-const HINT_LEVEL_SUBLABELS: Record<HintLevel, "hintLevelAbstract" | "hintLevelSpecific" | "hintLevelDirection"> = {
-  1: "hintLevelAbstract",
-  2: "hintLevelSpecific",
-  3: "hintLevelDirection",
+const VERDICT_LABEL_KEYS: Record<SubmissionVerdict, TranslationKey> = {
+  accepted: "solutionVerdict_accepted",
+  wrong_answer: "solutionVerdict_wrong_answer",
+  tle: "solutionVerdict_tle",
+  runtime_error: "solutionVerdict_runtime_error",
+  compile_error: "solutionVerdict_compile_error",
 };
 
 function HintIcon() {
@@ -48,356 +66,551 @@ function HintIcon() {
   );
 }
 
-function extractHintTexts(data: HintEngineResponse, count: number): string[] {
-  return data.hints
-    .filter((hint) => hint.text.length > 0)
-    .slice(0, count)
-    .map((hint) => hint.text);
-}
-
-function buildResponseFromSession(
-  session: HintSession,
-  problemTitle: string,
-  locale: "en" | "vi",
-): HintEngineResponse {
-  const hints: [HintLevelContent, HintLevelContent, HintLevelContent] = [
-    {
-      level: 1,
-      label: HINT_LEVEL_LABELS[1],
-      text: session.hints[0] ?? "",
-    },
-    {
-      level: 2,
-      label: HINT_LEVEL_LABELS[2],
-      text: session.hints[1] ?? "",
-    },
-    {
-      level: 3,
-      label: HINT_LEVEL_LABELS[3],
-      text: session.hints[2] ?? "",
-    },
-  ];
-
-  return {
-    problemTitle,
-    analysis: {
-      language: locale,
-      pattern: "",
-      difficulty: "",
-      summary: "",
-      complexity: { time: "", space: "" },
-    },
-    hints,
-    guardrailPassed: true,
-    generatedAt: new Date(session.updatedAt).toISOString(),
-    model: "",
-  };
-}
-
-export const CoachPanel = forwardRef<CoachPanelHandle, CoachPanelProps>(
-  function CoachPanel({ problem, onAnalysis }, ref) {
-  const { t, locale } = useTranslation();
-  const [response, setResponse] = useState<HintEngineResponse | null>(null);
-  const [visibleHintCount, setVisibleHintCount] = useState(0);
-  const [showPattern, setShowPattern] = useState(false);
-  const [showComplexity, setShowComplexity] = useState(false);
-  const [loadingAction, setLoadingAction] = useState<LoadingAction>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [sessionLoaded, setSessionLoaded] = useState(false);
-
-  const loading = loadingAction !== null;
-  const hints = response?.hints.filter((h) => h.text.length > 0) ?? [];
-  const visibleHints = hints.slice(0, visibleHintCount);
-  const canRequestMoreHints = visibleHintCount < 3 && hints.length >= visibleHintCount + 1;
-  const hasStarted = response !== null || visibleHintCount > 0 || showPattern || showComplexity;
-
-  const persistHintSession = useCallback(
-    async (level: number, hintTexts: string[]) => {
-      if (!problem.problemId) return;
-
-      await sendMessage<HintSession>({
-        type: "UPDATE_HINT_SESSION",
-        payload: {
-          problemId: problem.problemId,
-          currentLevel: level,
-          hints: hintTexts,
-          updatedAt: Date.now(),
-        },
-      });
-    },
-    [problem.problemId],
+function ChevronIcon({ expanded }: { expanded: boolean }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 20 20"
+      fill="currentColor"
+      className={`h-4 w-4 text-slate-400 transition-transform ${expanded ? "rotate-180" : ""}`}
+      aria-hidden
+    >
+      <path
+        fillRule="evenodd"
+        d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+        clipRule="evenodd"
+      />
+    </svg>
   );
+}
 
-  useEffect(() => {
-    if (!problem.problemId) {
-      setSessionLoaded(true);
-      return;
-    }
-
-    void (async () => {
-      const result = await sendMessage<HintSession | null>({
-        type: "GET_HINT_SESSION",
-        payload: { problemId: problem.problemId! },
-      });
-
-      if (result.ok && result.data && result.data.currentLevel > 0) {
-        const restored = buildResponseFromSession(
-          result.data,
-          problem.title,
-          locale,
-        );
-        setResponse(restored);
-        setVisibleHintCount(result.data.currentLevel);
-      }
-
-      setSessionLoaded(true);
-    })();
-  }, [problem.problemId, problem.title, locale]);
-
-  async function fetchAnalysis(action: LoadingAction) {
-    if (loading || !sessionLoaded) return;
-
-    if (response) {
-      applyAction(action);
-      return;
-    }
-
-    setLoadingAction(action);
-    setError(null);
-
-    try {
-      const result = await withTimeout(
-        sendMessage<HintEngineResponse>({
-          type: "GENERATE_HINTS",
-          payload: {
-            problem: {
-              title: problem.title,
-              description: problem.description,
-              examples: problem.examples,
-              constraints: problem.constraints,
-            },
-            language: locale,
-          },
-        }),
-        HINT_REQUEST_TIMEOUT_MS,
-        t("errorTimeout"),
-      );
-
-      if (!result) {
-        setError(t("errorNoResponse"));
-        return;
-      }
-
-      if (!result.ok) {
-        setError(result.error);
-        return;
-      }
-
-      const firstHint = result.data.hints.find((h) => h.level === 1 && h.text);
-      if (!firstHint) {
-        setError(t("errorEmptyHint"));
-        return;
-      }
-
-      setResponse(result.data);
-      onAnalysis?.(result.data.analysis);
-      applyAction(action, result.data);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : t("errorGeneric"),
-      );
-    } finally {
-      setLoadingAction(null);
-    }
-  }
-
-  function applyAction(action: LoadingAction, data: HintEngineResponse | null = response) {
-    if (!data) return;
-
-    if (action === "hint") {
-      const nextCount = Math.min(visibleHintCount + 1, 3);
-      setVisibleHintCount(nextCount);
-      void persistHintSession(nextCount, extractHintTexts(data, nextCount));
-    }
-    if (action === "pattern") setShowPattern(true);
-    if (action === "complexity") setShowComplexity(true);
-  }
-
-  function handleGetHint() {
-    void fetchAnalysis("hint");
-  }
-
-  useImperativeHandle(ref, () => ({
-    requestHint: handleGetHint,
-  }));
-
-  function handleAnalyzePattern() {
-    void fetchAnalysis("pattern");
-  }
-
-  function handleComplexity() {
-    void fetchAnalysis("complexity");
-  }
-
-  const loadingStages = [
-    t("loadingStageRead"),
-    t("loadingStageAnalyze"),
-    t("loadingStageContact"),
-  ];
-
-  if (!sessionLoaded) {
-    return <SkeletonLoader variant="generic" />;
+function BulletList({
+  items,
+  markerClass = "text-slate-800",
+}: {
+  items: string[];
+  markerClass?: string;
+}) {
+  if (items.length === 0) {
+    return <p className="text-sm text-slate-500">—</p>;
   }
 
   return (
-    <div className="space-y-4" data-coach-panel>
-      {!hasStarted && !loading && (
-        <section className="card">
-          <p className="mb-3 section-title">{t("actions")}</p>
-          <div className="text-center">
-            <HintIcon />
-            <p className="text-sm font-medium text-slate-800">{t("emptyTitle")}</p>
-            <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
-              {t("emptySubtitle")}
-            </p>
-            <div className="mt-4 flex flex-col gap-2">
-              <ActionButton
-                label={t("getHint")}
-                onClick={handleGetHint}
-                loading={loading}
-                variant="primary"
-              />
-              <div className="grid grid-cols-2 gap-2">
-                <ActionButton
-                  label={t("analyzePattern")}
-                  onClick={handleAnalyzePattern}
-                  loading={loading}
-                />
-                <ActionButton
-                  label={t("complexity")}
-                  onClick={handleComplexity}
-                  loading={loading}
-                />
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
+    <ul className={`list-disc space-y-2 pl-4 text-sm leading-relaxed ${markerClass}`}>
+      {items.map((item, index) => (
+        <li key={`${index}-${item.slice(0, 24)}`}>{item}</li>
+      ))}
+    </ul>
+  );
+}
 
-      {hasStarted && (
-        <section className="card">
-          <p className="mb-3 section-title">{t("actions")}</p>
-          <div className="flex flex-col gap-2">
-            {(canRequestMoreHints || visibleHintCount === 0) && (
-              <ActionButton
-                label={
-                  visibleHintCount === 0 ?
-                    t("getHint")
-                  : t("nextHint", { level: visibleHintCount + 1 })
-                }
-                onClick={handleGetHint}
-                loading={loading && loadingAction === "hint"}
-                variant="primary"
-              />
-            )}
-            <div className="grid grid-cols-2 gap-2">
-              {!showPattern && (
-                <ActionButton
-                  label={t("analyzePattern")}
-                  onClick={handleAnalyzePattern}
-                  loading={loading && loadingAction === "pattern"}
-                />
-              )}
-              {!showComplexity && (
-                <ActionButton
-                  label={t("complexity")}
-                  onClick={handleComplexity}
-                  loading={loading && loadingAction === "complexity"}
-                />
-              )}
-            </div>
-          </div>
-        </section>
-      )}
+function FeedbackSubsection({
+  title,
+  accent,
+  children,
+}: {
+  title: string;
+  accent: "emerald" | "amber";
+  children: ReactNode;
+}) {
+  const styles =
+    accent === "emerald" ?
+      "border-emerald-100 bg-emerald-50/50"
+    : "border-amber-100 bg-amber-50/50";
 
-      {loading && (
-        <>
-          <SkeletonLoader variant={loadingAction ?? "generic"} />
-          <LoadingProgress
-            stages={loadingStages}
-            title={
-              loadingAction === "pattern" ? t("loadingPattern")
-              : loadingAction === "complexity" ? t("loadingComplexity")
-              : t("loadingHint")
-            }
-            waitingMessage={t("loadingWaiting")}
-            slowMessage={t("loadingSlow")}
-          />
-        </>
-      )}
+  return (
+    <div className={`rounded-lg border px-3 py-2.5 ${styles}`}>
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-slate-600">
+        {title}
+      </p>
+      {children}
+    </div>
+  );
+}
 
-      {error && !loading && (
-        <p className="rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-600">
-          {error}
-        </p>
-      )}
+function ExpandableSection({
+  id,
+  title,
+  count,
+  expanded,
+  onToggle,
+  children,
+  defaultOpenHint,
+}: {
+  id: FeedbackSectionId;
+  title: string;
+  count: number;
+  expanded: boolean;
+  onToggle: (id: FeedbackSectionId) => void;
+  children: ReactNode;
+  defaultOpenHint?: boolean;
+}) {
+  const { t } = useTranslation();
 
-      {(visibleHints.length > 0 || showPattern || showComplexity) && !loading && (
-        <section className="space-y-3">
-          <p className="section-title">{t("response")}</p>
-
-          {showPattern && response?.analysis.pattern && (
-            <ResponseCard title={t("pattern")} accent="violet">
-              {response.analysis.pattern}
-            </ResponseCard>
+  return (
+    <div
+      className={`rounded-xl border bg-white transition-colors ${
+        expanded ? "border-slate-200" : "border-slate-200/80"
+      }`}
+    >
+      <button
+        type="button"
+        onClick={() => onToggle(id)}
+        className="flex w-full items-center justify-between px-3.5 py-3 text-left"
+        aria-expanded={expanded}
+      >
+        <span className="text-xs font-semibold text-slate-600">
+          {title}
+          {count > 0 ? ` (${count})` : ""}
+        </span>
+        <span className="flex items-center gap-2">
+          {defaultOpenHint && !expanded && (
+            <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-medium text-violet-700">
+              {t("solutionRecommended")}
+            </span>
           )}
-
-          {showComplexity && response?.analysis.complexity && (
-            <ResponseCard title={t("complexityTitle")} accent="emerald">
-              <dl className="grid grid-cols-2 gap-2 text-sm">
-                <div>
-                  <dt className="text-xs text-slate-500">{t("time")}</dt>
-                  <dd className="font-medium text-slate-800">
-                    {response.analysis.complexity.time}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-slate-500">{t("space")}</dt>
-                  <dd className="font-medium text-slate-800">
-                    {response.analysis.complexity.space}
-                  </dd>
-                </div>
-              </dl>
-            </ResponseCard>
-          )}
-
-          {visibleHints.length > 0 && (
-            <ResponseCard title={t("hints")} accent="blue">
-              <div className="space-y-3">
-                {visibleHints.map((hint) => (
-                  <HintItem key={hint.level} hint={hint} />
-                ))}
-              </div>
-            </ResponseCard>
-          )}
-        </section>
-      )}
-
-      {visibleHintCount === 3 && !loading && (
-        <p className="text-center text-xs text-slate-400">{t("allHintsShown")}</p>
+          <ChevronIcon expanded={expanded} />
+        </span>
+      </button>
+      {expanded && (
+        <div className="space-y-3 border-t border-slate-100 px-3.5 py-3">{children}</div>
       )}
     </div>
   );
-});
+}
 
-function HintItem({ hint }: { hint: HintLevelContent }) {
+function sessionToHints(session: HintSession): HintStep[] {
+  return session.hints
+    .filter((text) => text.length > 0)
+    .map((text, index) => ({ index: index + 1, text }));
+}
+
+function feedbackItemCount(analysis: SolutionAnalysis): number {
+  const strengths = analysis.interviewStrengths ?? [];
+  const improvements = analysis.interviewImprovements ?? [];
+  if (strengths.length + improvements.length > 0) {
+    return strengths.length + improvements.length;
+  }
+  return analysis.interviewFeedback ? 1 : 0;
+}
+
+export const CoachPanel = forwardRef<CoachPanelHandle, CoachPanelProps>(
+  function CoachPanel(
+    {
+      problem,
+      solutionAnalysis,
+      solutionLoading,
+      solutionError,
+      autoAnalyzeOnSubmit,
+      analysisSettingsLoading,
+      onAnalyzeSolution,
+      onToggleAutoAnalyze,
+    },
+    ref,
+  ) {
+    const { t, locale } = useTranslation();
+    const [hints, setHints] = useState<HintStep[]>([]);
+    const [canContinue, setCanContinue] = useState(true);
+    const [loadingAction, setLoadingAction] = useState<LoadingAction>(null);
+    const [hintError, setHintError] = useState<string | null>(null);
+    const [sessionLoaded, setSessionLoaded] = useState(false);
+    const [feedbackExpanded, setFeedbackExpanded] = useState<Set<FeedbackSectionId>>(
+      new Set(["feedback"]),
+    );
+
+    const isLeetCode = problem.platform === "leetcode";
+    const hintLoading = loadingAction === "hint";
+    const reviewLoading = loadingAction === "review" || solutionLoading;
+    const loading = hintLoading || reviewLoading;
+    const canRequestMoreHints = canContinue && hints.length < MAX_HINTS;
+    const hasStarted =
+      hints.length > 0 || solutionAnalysis !== null || reviewLoading || hintLoading;
+
+    const persistHintSession = useCallback(
+      async (hintTexts: string[]) => {
+        if (!problem.problemId) return;
+
+        await sendMessage<HintSession>({
+          type: "UPDATE_HINT_SESSION",
+          payload: {
+            problemId: problem.problemId,
+            currentLevel: hintTexts.length,
+            hints: hintTexts,
+            updatedAt: Date.now(),
+          },
+        });
+      },
+      [problem.problemId],
+    );
+
+    useEffect(() => {
+      if (!problem.problemId) {
+        setSessionLoaded(true);
+        return;
+      }
+
+      void (async () => {
+        const result = await sendMessage<HintSession | null>({
+          type: "GET_HINT_SESSION",
+          payload: { problemId: problem.problemId! },
+        });
+
+        if (result.ok && result.data && result.data.currentLevel > 0) {
+          const restored = sessionToHints(result.data);
+          setHints(restored);
+          setCanContinue(restored.length < MAX_HINTS);
+        }
+
+        setSessionLoaded(true);
+      })();
+    }, [problem.problemId]);
+
+    async function handleGetHint() {
+      if (hintLoading || !sessionLoaded || !canRequestMoreHints) return;
+
+      setLoadingAction("hint");
+      setHintError(null);
+
+      try {
+        const result = await withTimeout(
+          sendMessage<HintEngineResponse>({
+            type: "GENERATE_HINTS",
+            payload: {
+              problem: {
+                title: problem.title,
+                description: problem.description,
+                examples: problem.examples,
+                constraints: problem.constraints,
+              },
+              language: locale,
+              previousHints: hints.length > 0 ? hints : undefined,
+            },
+          }),
+          HINT_REQUEST_TIMEOUT_MS,
+          t("errorTimeout"),
+        );
+
+        if (!result) {
+          setHintError(t("errorNoResponse"));
+          return;
+        }
+
+        if (!result.ok) {
+          setHintError(result.error);
+          return;
+        }
+
+        if (!result.data.hint.text) {
+          setHintError(t("errorEmptyHint"));
+          return;
+        }
+
+        const nextHints = [...hints, result.data.hint];
+        setHints(nextHints);
+        setCanContinue(result.data.canContinue);
+        void persistHintSession(nextHints.map((h) => h.text));
+      } catch (err) {
+        setHintError(err instanceof Error ? err.message : t("errorGeneric"));
+      } finally {
+        setLoadingAction(null);
+      }
+    }
+
+    function handleReviewSolution() {
+      if (reviewLoading || !isLeetCode) return;
+      setLoadingAction("review");
+      onAnalyzeSolution(Boolean(solutionAnalysis));
+    }
+
+    useEffect(() => {
+      if (!solutionLoading && loadingAction === "review") {
+        setLoadingAction(null);
+      }
+    }, [solutionLoading, loadingAction]);
+
+    useImperativeHandle(ref, () => ({
+      requestHint: () => void handleGetHint(),
+    }));
+
+    const hintLoadingStages = [
+      t("loadingStageRead"),
+      t("loadingStageAnalyze"),
+      t("loadingStageContact"),
+    ];
+
+    const reviewLoadingStages = [
+      t("solutionLoadingRead"),
+      t("solutionLoadingAnalyze"),
+      t("solutionLoadingContact"),
+    ];
+
+    const toggleFeedbackSection = (id: FeedbackSectionId) => {
+      setFeedbackExpanded((prev) => {
+        const next = new Set(prev);
+        if (next.has(id)) next.delete(id);
+        else next.add(id);
+        return next;
+      });
+    };
+
+    const strengths = solutionAnalysis?.interviewStrengths ?? [];
+    const improvements = solutionAnalysis?.interviewImprovements ?? [];
+    const hasStructuredFeedback = strengths.length > 0 || improvements.length > 0;
+    const legacyFeedback = solutionAnalysis?.interviewFeedback?.trim();
+
+    const modeLabel =
+      solutionAnalysis?.analysisMode === "submission" && solutionAnalysis.submissionVerdict ?
+        t(VERDICT_LABEL_KEYS[solutionAnalysis.submissionVerdict])
+      : solutionAnalysis ?
+        t("solutionModeManual")
+      : null;
+
+    if (!sessionLoaded) {
+      return <SkeletonLoader variant="generic" />;
+    }
+
+    return (
+      <div className="space-y-4" data-coach-panel>
+        {!hasStarted && !loading && (
+          <section className="card">
+            <p className="mb-3 section-title">{t("actions")}</p>
+            <div className="text-center">
+              <HintIcon />
+              <p className="text-sm font-medium text-slate-800">{t("emptyTitle")}</p>
+              <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
+                {t("emptySubtitle")}
+              </p>
+              <div className="mt-4 flex flex-col gap-2">
+                <ActionButton
+                  label={t("getHint")}
+                  onClick={() => void handleGetHint()}
+                  loading={hintLoading}
+                  variant="primary"
+                />
+                {isLeetCode && (
+                  <ActionButton
+                    label={t("reviewSolution")}
+                    onClick={handleReviewSolution}
+                    loading={reviewLoading}
+                  />
+                )}
+              </div>
+            </div>
+          </section>
+        )}
+
+        {hasStarted && (
+          <section className="card">
+            <p className="mb-3 section-title">{t("actions")}</p>
+            <div className="flex flex-col gap-2">
+              {canRequestMoreHints && (
+                <ActionButton
+                  label={hints.length === 0 ? t("getHint") : t("nextHint")}
+                  onClick={() => void handleGetHint()}
+                  loading={hintLoading}
+                  variant="primary"
+                />
+              )}
+              {isLeetCode && (
+                <ActionButton
+                  label={
+                    solutionAnalysis ? t("solutionReanalyze") : t("reviewSolution")
+                  }
+                  onClick={handleReviewSolution}
+                  loading={reviewLoading && loadingAction === "review"}
+                />
+              )}
+            </div>
+
+            {isLeetCode && (
+              <label className="mt-3 flex cursor-pointer items-center gap-2.5 rounded-lg border border-slate-100 bg-slate-50/80 px-3 py-2.5 transition hover:border-slate-200">
+                <input
+                  type="checkbox"
+                  checked={autoAnalyzeOnSubmit}
+                  disabled={analysisSettingsLoading}
+                  onChange={(event) => onToggleAutoAnalyze(event.target.checked)}
+                  className="h-3.5 w-3.5 rounded border-slate-300 text-brand-600 focus:ring-brand-500"
+                />
+                <span className="text-xs leading-snug text-slate-600">
+                  {t("solutionAutoAnalyzeOnSubmit")}
+                </span>
+              </label>
+            )}
+          </section>
+        )}
+
+        {hints.length > 0 && !solutionAnalysis && canContinue && !loading && (
+          <p className="text-center text-xs text-slate-500">{t("nextStepReview")}</p>
+        )}
+
+        {!canContinue && hints.length > 0 && !loading && (
+          <p className="text-center text-xs text-slate-400">{t("allHintsShown")}</p>
+        )}
+
+        {hintLoading && (
+          <>
+            <SkeletonLoader variant="generic" />
+            <LoadingProgress
+              stages={hintLoadingStages}
+              title={t("loadingHint")}
+              waitingMessage={t("loadingWaiting")}
+              slowMessage={t("loadingSlow")}
+            />
+          </>
+        )}
+
+        {reviewLoading && loadingAction === "review" && (
+          <>
+            <SkeletonLoader variant="generic" />
+            <LoadingProgress
+              stages={reviewLoadingStages}
+              title={t("solutionLoading")}
+              waitingMessage={t("loadingWaiting")}
+              slowMessage={t("loadingSlow")}
+            />
+          </>
+        )}
+
+        {hintError && !hintLoading && (
+          <p className="rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-600">
+            {hintError}
+          </p>
+        )}
+
+        {solutionError && !reviewLoading && (
+          <p className="rounded-xl border border-red-100 bg-red-50 p-3 text-sm text-red-600">
+            {solutionError}
+          </p>
+        )}
+
+        {(hints.length > 0 || solutionAnalysis) && !hintLoading && (
+          <section className="space-y-3">
+            <p className="section-title">{t("response")}</p>
+
+            {hints.length > 0 && (
+              <ResponseCard title={t("hints")} accent="blue">
+                <div className="space-y-3">
+                  {hints.map((hint) => (
+                    <HintItem key={hint.index} hint={hint} />
+                  ))}
+                </div>
+              </ResponseCard>
+            )}
+
+            {solutionAnalysis && !reviewLoading && (
+              <div className="space-y-2.5">
+                {(modeLabel || solutionAnalysis.cached) && (
+                  <div className="flex flex-wrap justify-end gap-1">
+                    {modeLabel && (
+                      <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-medium text-violet-700">
+                        {modeLabel}
+                      </span>
+                    )}
+                    {solutionAnalysis.cached && (
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-500">
+                        {t("solutionCached")}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                <ResponseCard title={t("solutionYourCode")} accent="violet">
+                  <p className="font-medium leading-snug text-slate-800">
+                    {solutionAnalysis.pattern}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-100 bg-white/80 px-2.5 py-1 text-xs">
+                      <span className="text-slate-500">{t("time")}</span>
+                      <span className="font-semibold text-slate-800">
+                        {solutionAnalysis.timeComplexity}
+                      </span>
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-100 bg-white/80 px-2.5 py-1 text-xs">
+                      <span className="text-slate-500">{t("space")}</span>
+                      <span className="font-semibold text-slate-800">
+                        {solutionAnalysis.spaceComplexity}
+                      </span>
+                    </span>
+                  </div>
+                </ResponseCard>
+
+                <ExpandableSection
+                  id="feedback"
+                  title={t("solutionInterviewFeedback")}
+                  count={feedbackItemCount(solutionAnalysis)}
+                  expanded={feedbackExpanded.has("feedback")}
+                  onToggle={toggleFeedbackSection}
+                  defaultOpenHint
+                >
+                  {hasStructuredFeedback ?
+                    <div className="space-y-2.5">
+                      {strengths.length > 0 && (
+                        <FeedbackSubsection title={t("solutionStrengths")} accent="emerald">
+                          <BulletList items={strengths} markerClass="text-emerald-950" />
+                        </FeedbackSubsection>
+                      )}
+                      {improvements.length > 0 && (
+                        <FeedbackSubsection
+                          title={t("solutionImprovements")}
+                          accent="amber"
+                        >
+                          <BulletList items={improvements} markerClass="text-amber-950" />
+                        </FeedbackSubsection>
+                      )}
+                    </div>
+                  : legacyFeedback ?
+                    <div className="space-y-2">
+                      <p className="text-sm leading-relaxed text-slate-800">{legacyFeedback}</p>
+                      <p className="text-[11px] text-slate-400">{t("solutionLegacyFeedback")}</p>
+                    </div>
+                  : <p className="text-sm text-slate-500">—</p>}
+                </ExpandableSection>
+
+                <ExpandableSection
+                  id="bottlenecks"
+                  title={t("solutionBottlenecks")}
+                  count={solutionAnalysis.bottlenecks.length}
+                  expanded={feedbackExpanded.has("bottlenecks")}
+                  onToggle={toggleFeedbackSection}
+                >
+                  <BulletList items={solutionAnalysis.bottlenecks} />
+                </ExpandableSection>
+
+                <ExpandableSection
+                  id="optimizations"
+                  title={t("solutionOptimizations")}
+                  count={solutionAnalysis.optimizations.length}
+                  expanded={feedbackExpanded.has("optimizations")}
+                  onToggle={toggleFeedbackSection}
+                >
+                  <BulletList items={solutionAnalysis.optimizations} />
+                </ExpandableSection>
+
+                <ExpandableSection
+                  id="edgeCases"
+                  title={t("solutionEdgeCases")}
+                  count={solutionAnalysis.missedEdgeCases.length}
+                  expanded={feedbackExpanded.has("edgeCases")}
+                  onToggle={toggleFeedbackSection}
+                >
+                  <BulletList items={solutionAnalysis.missedEdgeCases} />
+                </ExpandableSection>
+              </div>
+            )}
+          </section>
+        )}
+      </div>
+    );
+  },
+);
+
+function HintItem({ hint }: { hint: HintStep }) {
   const { t } = useTranslation();
-  const sublabel = t(HINT_LEVEL_SUBLABELS[hint.level]);
 
   return (
     <div className="hint-reveal rounded-lg border border-blue-100/80 bg-white/70 p-3">
       <p className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-blue-700/80">
-        {t("hintLevel", { level: hint.level })} — {sublabel}
+        {t("hintLevel", { level: hint.index })}
       </p>
       <p className="text-sm text-slate-800">{hint.text}</p>
     </div>

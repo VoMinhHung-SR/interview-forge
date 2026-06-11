@@ -8,7 +8,6 @@ import { AppHeader } from "./components/AppHeader";
 import { CoachPanel, type CoachPanelHandle } from "./components/CoachPanel";
 import { PersistencePanel } from "./components/PersistencePanel";
 import { ProblemHubPanel } from "./components/ProblemHubPanel";
-import { SolutionAnalysisPanel } from "./components/SolutionAnalysisPanel";
 import { StickyActionBar } from "./components/StickyActionBar";
 import { useSolutionAnalysis } from "./hooks/useSolutionAnalysis";
 
@@ -166,21 +165,15 @@ function AppContent() {
               ref={coachRef}
               key={`${problem.url}-${locale}`}
               problem={problem}
+              solutionAnalysis={solutionAnalysis}
+              solutionLoading={solutionLoading}
+              solutionError={solutionError}
+              autoAnalyzeOnSubmit={analysisSettings.autoAnalyzeOnSubmit}
+              analysisSettingsLoading={analysisSettingsLoading}
+              onAnalyzeSolution={(force) => void analyzeSolution(force)}
+              onToggleAutoAnalyze={(enabled) => void toggleAutoAnalyze(enabled)}
             />
           </>
-        )}
-
-        {problem && (
-          <SolutionAnalysisPanel
-            problem={problem}
-            analysis={solutionAnalysis}
-            loading={solutionLoading}
-            error={solutionError}
-            autoAnalyzeOnSubmit={analysisSettings.autoAnalyzeOnSubmit}
-            settingsLoading={analysisSettingsLoading}
-            onAnalyze={(force) => void analyzeSolution(force)}
-            onToggleAutoAnalyze={(enabled) => void toggleAutoAnalyze(enabled)}
-          />
         )}
 
         {!problem && !loading && !error && (

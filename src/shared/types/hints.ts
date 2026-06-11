@@ -1,39 +1,24 @@
 /** Supported UI / AI response locales. */
 export type AppLocale = "en" | "vi";
 
-/** Hint escalation level — 1 (abstract) through 3 (strong direction). */
-export type HintLevel = 1 | 2 | 3;
+export const MAX_HINTS = 8;
 
-export const HINT_LEVEL_LABELS = {
-  1: "abstract",
-  2: "specific",
-  3: "direction",
-} as const satisfies Record<HintLevel, string>;
-
-export interface HintLevelContent {
-  level: HintLevel;
-  label: (typeof HINT_LEVEL_LABELS)[HintLevel];
+export interface HintStep {
+  index: number;
   text: string;
 }
 
-export interface MentorComplexity {
-  time: string;
-  space: string;
-}
-
-export interface MentorAnalysis {
-  language: AppLocale;
+export interface MentorMeta {
   pattern: string;
   difficulty: string;
-  summary: string;
-  complexity: MentorComplexity;
 }
 
-/** Structured JSON returned by the Hint Engine. */
+/** Structured JSON returned by the Hint Engine (one hint per request). */
 export interface HintEngineResponse {
   problemTitle: string;
-  analysis: MentorAnalysis;
-  hints: [HintLevelContent, HintLevelContent, HintLevelContent];
+  hint: HintStep;
+  canContinue: boolean;
+  analysis: MentorMeta;
   guardrailPassed: boolean;
   generatedAt: string;
   model: string;
@@ -42,16 +27,10 @@ export interface HintEngineResponse {
 /** Raw JSON shape expected from the AI provider. */
 export interface HintEngineJsonPayload {
   language?: string;
+  hint?: string;
+  canContinue?: boolean;
   pattern?: string;
   difficulty?: string;
-  summary?: string;
-  complexity?: {
-    time?: string;
-    space?: string;
-  };
-  hints:
-    | [string, string, string]
-    | Array<{ level: HintLevel; text: string }>;
 }
 
 export interface GenerateHintsRequest {
@@ -63,10 +42,8 @@ export interface GenerateHintsRequest {
   };
   /** UI locale — AI responds in this language. */
   language?: AppLocale;
-  /** When set, only generate up to this level (progressive mode). */
-  maxLevel?: HintLevel;
-  /** Previously shown hints — used to ensure escalation in progressive mode. */
-  previousHints?: HintLevelContent[];
+  /** Previously shown hints — used to escalate without repeating. */
+  previousHints?: HintStep[];
 }
 
 export type HintEngineErrorCode =
