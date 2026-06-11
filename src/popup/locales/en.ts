@@ -41,6 +41,8 @@ export const en = {
   emptyTitle: "Need help solving this problem?",
   emptySubtitle:
     "Get step-by-step hints and code feedback — without spoiling the full solution.",
+  contextMenuHint:
+    "Right-click anywhere on the problem page → Interview Forge → Get Hint or Review Code.",
   allHintsShown: "Enough hints for now — try coding, then review your solution.",
 
   loadingHint: "Generating hint",

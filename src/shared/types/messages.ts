@@ -41,7 +41,8 @@ export type ExtensionMessage =
       type: "SET_ANALYSIS_SETTINGS";
       payload: Partial<AnalysisSettings>;
     }
-  | { type: "CLEAR_ANALYSIS_BADGE" };
+  | { type: "CLEAR_ANALYSIS_BADGE" }
+  | { type: "REFRESH_CONTEXT_MENUS" };
 
 export type ExtensionResponse<T = unknown> =
   | { ok: true; data: T }

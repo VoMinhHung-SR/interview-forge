@@ -1,4 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  PENDING_COACH_ACTION_KEY,
+  type PendingCoachAction,
+} from "@/shared/constants/extension-storage";
 import { sendMessage } from "@/shared/messaging";
 import type { ProblemContext } from "@/shared/types";
 import { LanguageProvider } from "@/popup/hooks/useLanguage";
@@ -20,6 +24,8 @@ function AppContent() {
   const [error, setError] = useState<string | null>(null);
   const [saveLoading, setSaveLoading] = useState(false);
   const [stickyVisible, setStickyVisible] = useState(false);
+  const [pendingCoachAction, setPendingCoachAction] =
+    useState<PendingCoachAction | null>(null);
   const coachRef = useRef<CoachPanelHandle>(null);
   const coachSentinelRef = useRef<HTMLDivElement>(null);
   const {
@@ -58,6 +64,16 @@ function AppContent() {
   useEffect(() => {
     void loadProblem();
   }, [loadProblem]);
+
+  useEffect(() => {
+    void chrome.storage.session.get(PENDING_COACH_ACTION_KEY).then((result) => {
+      const action = result[PENDING_COACH_ACTION_KEY];
+      if (action === "hint" || action === "review") {
+        setPendingCoachAction(action);
+        void chrome.storage.session.remove(PENDING_COACH_ACTION_KEY);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     const sentinel = coachSentinelRef.current;
@@ -165,6 +181,8 @@ function AppContent() {
               ref={coachRef}
               key={`${problem.url}-${locale}`}
               problem={problem}
+              pendingAction={pendingCoachAction}
+              onPendingActionConsumed={() => setPendingCoachAction(null)}
               solutionAnalysis={solutionAnalysis}
               solutionLoading={solutionLoading}
               solutionError={solutionError}

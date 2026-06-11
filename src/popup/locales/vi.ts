@@ -43,6 +43,8 @@ export const vi: Record<TranslationKey, string> = {
   emptyTitle: "Cần trợ giúp giải bài này?",
   emptySubtitle:
     "Nhận gợi ý từng bước và nhận xét code — không tiết lộ lời giải hoàn chỉnh.",
+  contextMenuHint:
+    "Chuột phải trên trang bài toán → Interview Forge → Gợi ý hoặc Nhận xét code.",
   allHintsShown: "Đã đủ gợi ý — thử code rồi nhận xét lời giải.",
 
   loadingHint: "Đang tạo gợi ý",

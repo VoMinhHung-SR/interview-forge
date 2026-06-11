@@ -32,7 +32,7 @@
       "run_at": "document_idle"
     }
   ],
-  "permissions": ["storage", "activeTab", "scripting"],
+  "permissions": ["storage", "activeTab", "scripting", "contextMenus"],
   "host_permissions": [
     "https://leetcode.com/*",
     "https://www.leetcode.com/*",

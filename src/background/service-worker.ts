@@ -8,7 +8,11 @@ import "@/background/handlers/generate-hints";
 import "@/background/handlers/translate-problem";
 import "@/background/handlers/persistence";
 import "@/background/handlers/analyze-solution";
+import "@/background/handlers/context-menu";
+import { initCoachContextMenus } from "@/background/context-menu";
 import { onMessage } from "@/shared/messaging/router";
+
+initCoachContextMenus();
 
 chrome.runtime.onInstalled.addListener(() => {
   console.info("[Coding Interview Coach] Extension installed");

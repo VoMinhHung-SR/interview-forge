@@ -6,6 +6,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import type { PendingCoachAction } from "@/shared/constants/extension-storage";
 import { sendMessage } from "@/shared/messaging";
 import type {
   HintEngineResponse,
@@ -26,6 +27,8 @@ import { LoadingProgress } from "./LoadingProgress";
 
 interface CoachPanelProps {
   problem: ProblemContext;
+  pendingAction?: PendingCoachAction | null;
+  onPendingActionConsumed?: () => void;
   solutionAnalysis: SolutionAnalysis | null;
   solutionLoading: boolean;
   solutionError: string | null;
@@ -37,6 +40,7 @@ interface CoachPanelProps {
 
 export interface CoachPanelHandle {
   requestHint: () => void;
+  requestReview: () => void;
 }
 
 type LoadingAction = "hint" | "review" | null;
@@ -179,8 +183,9 @@ function ExpandableSection({
   );
 }
 
-function sessionToHints(session: HintSession): HintStep[] {
-  return session.hints
+function bufferToVisibleSteps(buffer: string[], visibleCount: number): HintStep[] {
+  return buffer
+    .slice(0, visibleCount)
     .filter((text) => text.length > 0)
     .map((text, index) => ({ index: index + 1, text }));
 }
@@ -198,6 +203,8 @@ export const CoachPanel = forwardRef<CoachPanelHandle, CoachPanelProps>(
   function CoachPanel(
     {
       problem,
+      pendingAction = null,
+      onPendingActionConsumed,
       solutionAnalysis,
       solutionLoading,
       solutionError,
@@ -209,7 +216,8 @@ export const CoachPanel = forwardRef<CoachPanelHandle, CoachPanelProps>(
     ref,
   ) {
     const { t, locale } = useTranslation();
-    const [hints, setHints] = useState<HintStep[]>([]);
+    const [hintBuffer, setHintBuffer] = useState<string[]>([]);
+    const [visibleCount, setVisibleCount] = useState(0);
     const [canContinue, setCanContinue] = useState(true);
     const [loadingAction, setLoadingAction] = useState<LoadingAction>(null);
     const [hintError, setHintError] = useState<string | null>(null);
@@ -218,24 +226,28 @@ export const CoachPanel = forwardRef<CoachPanelHandle, CoachPanelProps>(
       new Set(["feedback"]),
     );
 
+    const visibleHints = bufferToVisibleSteps(hintBuffer, visibleCount);
     const isLeetCode = problem.platform === "leetcode";
     const hintLoading = loadingAction === "hint";
     const reviewLoading = loadingAction === "review" || solutionLoading;
     const loading = hintLoading || reviewLoading;
-    const canRequestMoreHints = canContinue && hints.length < MAX_HINTS;
+    const hasBufferedHints = visibleCount < hintBuffer.length;
+    const canRequestMoreHints =
+      visibleCount < MAX_HINTS && (hasBufferedHints || canContinue);
     const hasStarted =
-      hints.length > 0 || solutionAnalysis !== null || reviewLoading || hintLoading;
+      visibleCount > 0 || solutionAnalysis !== null || reviewLoading || hintLoading;
 
     const persistHintSession = useCallback(
-      async (hintTexts: string[]) => {
+      async (buffer: string[], revealed: number, continueFlag: boolean) => {
         if (!problem.problemId) return;
 
         await sendMessage<HintSession>({
           type: "UPDATE_HINT_SESSION",
           payload: {
             problemId: problem.problemId,
-            currentLevel: hintTexts.length,
-            hints: hintTexts,
+            currentLevel: revealed,
+            hints: buffer,
+            canContinue: continueFlag,
             updatedAt: Date.now(),
           },
         });
@@ -256,9 +268,13 @@ export const CoachPanel = forwardRef<CoachPanelHandle, CoachPanelProps>(
         });
 
         if (result.ok && result.data && result.data.currentLevel > 0) {
-          const restored = sessionToHints(result.data);
-          setHints(restored);
-          setCanContinue(restored.length < MAX_HINTS);
+          setHintBuffer(result.data.hints);
+          setVisibleCount(result.data.currentLevel);
+          setCanContinue(
+            result.data.canContinue ??
+              (result.data.currentLevel < result.data.hints.length ||
+                result.data.currentLevel < MAX_HINTS),
+          );
         }
 
         setSessionLoaded(true);
@@ -268,10 +284,22 @@ export const CoachPanel = forwardRef<CoachPanelHandle, CoachPanelProps>(
     async function handleGetHint() {
       if (hintLoading || !sessionLoaded || !canRequestMoreHints) return;
 
+      if (hasBufferedHints) {
+        const nextVisible = visibleCount + 1;
+        setVisibleCount(nextVisible);
+        void persistHintSession(hintBuffer, nextVisible, canContinue);
+        return;
+      }
+
       setLoadingAction("hint");
       setHintError(null);
 
       try {
+        const previousHints =
+          hintBuffer.length > 0 ?
+            hintBuffer.map((text, index) => ({ index: index + 1, text }))
+          : undefined;
+
         const result = await withTimeout(
           sendMessage<HintEngineResponse>({
             type: "GENERATE_HINTS",
@@ -282,8 +310,9 @@ export const CoachPanel = forwardRef<CoachPanelHandle, CoachPanelProps>(
                 examples: problem.examples,
                 constraints: problem.constraints,
               },
+              problemId: problem.problemId,
               language: locale,
-              previousHints: hints.length > 0 ? hints : undefined,
+              previousHints,
             },
           }),
           HINT_REQUEST_TIMEOUT_MS,
@@ -300,15 +329,19 @@ export const CoachPanel = forwardRef<CoachPanelHandle, CoachPanelProps>(
           return;
         }
 
-        if (!result.data.hint.text) {
+        if (result.data.hints.length === 0 || !result.data.hints[0]?.text) {
           setHintError(t("errorEmptyHint"));
           return;
         }
 
-        const nextHints = [...hints, result.data.hint];
-        setHints(nextHints);
+        const newTexts = result.data.hints.map((hint) => hint.text);
+        const mergedBuffer = [...hintBuffer, ...newTexts];
+        const nextVisible = visibleCount + 1;
+
+        setHintBuffer(mergedBuffer);
+        setVisibleCount(nextVisible);
         setCanContinue(result.data.canContinue);
-        void persistHintSession(nextHints.map((h) => h.text));
+        void persistHintSession(mergedBuffer, nextVisible, result.data.canContinue);
       } catch (err) {
         setHintError(err instanceof Error ? err.message : t("errorGeneric"));
       } finally {
@@ -328,8 +361,21 @@ export const CoachPanel = forwardRef<CoachPanelHandle, CoachPanelProps>(
       }
     }, [solutionLoading, loadingAction]);
 
+    useEffect(() => {
+      if (!pendingAction || !sessionLoaded) return;
+
+      if (pendingAction === "hint") {
+        void handleGetHint();
+      } else if (pendingAction === "review") {
+        handleReviewSolution();
+      }
+
+      onPendingActionConsumed?.();
+    }, [pendingAction, sessionLoaded]);
+
     useImperativeHandle(ref, () => ({
       requestHint: () => void handleGetHint(),
+      requestReview: () => handleReviewSolution(),
     }));
 
     const hintLoadingStages = [
@@ -380,21 +426,11 @@ export const CoachPanel = forwardRef<CoachPanelHandle, CoachPanelProps>(
               <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
                 {t("emptySubtitle")}
               </p>
-              <div className="mt-4 flex flex-col gap-2">
-                <ActionButton
-                  label={t("getHint")}
-                  onClick={() => void handleGetHint()}
-                  loading={hintLoading}
-                  variant="primary"
-                />
-                {isLeetCode && (
-                  <ActionButton
-                    label={t("reviewSolution")}
-                    onClick={handleReviewSolution}
-                    loading={reviewLoading}
-                  />
-                )}
-              </div>
+              {isLeetCode && (
+                <p className="mt-3 rounded-lg border border-brand-100 bg-brand-50/60 px-3 py-2.5 text-xs leading-relaxed text-brand-900">
+                  {t("contextMenuHint")}
+                </p>
+              )}
             </div>
           </section>
         )}
@@ -405,7 +441,7 @@ export const CoachPanel = forwardRef<CoachPanelHandle, CoachPanelProps>(
             <div className="flex flex-col gap-2">
               {canRequestMoreHints && (
                 <ActionButton
-                  label={hints.length === 0 ? t("getHint") : t("nextHint")}
+                  label={visibleCount === 0 ? t("getHint") : t("nextHint")}
                   onClick={() => void handleGetHint()}
                   loading={hintLoading}
                   variant="primary"
@@ -439,11 +475,11 @@ export const CoachPanel = forwardRef<CoachPanelHandle, CoachPanelProps>(
           </section>
         )}
 
-        {hints.length > 0 && !solutionAnalysis && canContinue && !loading && (
+        {visibleCount > 0 && !solutionAnalysis && canContinue && !loading && (
           <p className="text-center text-xs text-slate-500">{t("nextStepReview")}</p>
         )}
 
-        {!canContinue && hints.length > 0 && !loading && (
+        {!canContinue && visibleCount > 0 && !loading && (
           <p className="text-center text-xs text-slate-400">{t("allHintsShown")}</p>
         )}
 
@@ -483,14 +519,14 @@ export const CoachPanel = forwardRef<CoachPanelHandle, CoachPanelProps>(
           </p>
         )}
 
-        {(hints.length > 0 || solutionAnalysis) && !hintLoading && (
+        {(visibleCount > 0 || solutionAnalysis) && !hintLoading && (
           <section className="space-y-3">
             <p className="section-title">{t("response")}</p>
 
-            {hints.length > 0 && (
+            {visibleHints.length > 0 && (
               <ResponseCard title={t("hints")} accent="blue">
                 <div className="space-y-3">
-                  {hints.map((hint) => (
+                  {visibleHints.map((hint) => (
                     <HintItem key={hint.index} hint={hint} />
                   ))}
                 </div>

@@ -39,31 +39,50 @@ export function validateHintText(text: string): GuardrailResult {
   return { passed: violations.length === 0, violations };
 }
 
+function normalizeHintStrings(payload: HintEngineJsonPayload): string[] {
+  if (!Array.isArray(payload.hints)) return [];
+  return payload.hints
+    .filter((item): item is string => typeof item === "string")
+    .map((text) => text.trim())
+    .filter((text) => text.length > 0);
+}
+
 /**
- * Validates the hint in an AI response payload.
+ * Validates all hints in an AI response payload.
  */
 export function validateHintPayload(
   payload: HintEngineJsonPayload,
+  expectedCount: number,
 ): GuardrailResult {
-  const hint = payload.hint?.trim() ?? "";
-  if (!hint) {
-    return { passed: false, violations: ["Empty hint"] };
+  const hints = normalizeHintStrings(payload);
+  const violations: string[] = [];
+
+  if (hints.length === 0) {
+    violations.push("Empty hints array");
+  }
+  if (hints.length !== expectedCount) {
+    violations.push(`Expected ${expectedCount} hint(s), got ${hints.length}`);
   }
 
-  const result = validateHintText(hint);
-  return {
-    passed: result.passed,
-    violations: result.violations.map((v) => `Hint: ${v}`),
-  };
+  for (let i = 0; i < hints.length; i++) {
+    const result = validateHintText(hints[i]);
+    violations.push(...result.violations.map((v) => `Hint ${i + 1}: ${v}`));
+  }
+
+  return { passed: violations.length === 0, violations };
+}
+
+export function extractHintStrings(payload: HintEngineJsonPayload): string[] {
+  return normalizeHintStrings(payload);
 }
 
 export function normalizeMetaPayload(
   payload: HintEngineJsonPayload,
-  isFirstHint: boolean,
+  isFirstBatch: boolean,
 ): MentorMeta {
   return {
-    pattern: isFirstHint ? payload.pattern?.trim() || "Unknown" : "",
-    difficulty: isFirstHint ? payload.difficulty?.trim() || "Unknown" : "",
+    pattern: isFirstBatch ? payload.pattern?.trim() || "Unknown" : "",
+    difficulty: isFirstBatch ? payload.difficulty?.trim() || "Unknown" : "",
   };
 }
 
@@ -84,13 +103,16 @@ export function extractJsonFromResponse(raw: string): string {
 function isHintEngineJsonPayload(value: unknown): value is HintEngineJsonPayload {
   if (typeof value !== "object" || value === null) return false;
   const record = value as Record<string, unknown>;
-  return typeof record.hint === "string";
+  return Array.isArray(record.hints);
 }
 
 /**
  * Parses and validates the AI response into a typed JSON payload.
  */
-export function parseHintResponse(raw: string): HintEngineJsonPayload {
+export function parseHintResponse(
+  raw: string,
+  expectedCount: number,
+): HintEngineJsonPayload {
   const jsonText = extractJsonFromResponse(raw);
   const parsed: unknown = JSON.parse(jsonText);
 
@@ -98,8 +120,9 @@ export function parseHintResponse(raw: string): HintEngineJsonPayload {
     throw new Error("AI response does not match HintEngineJsonPayload schema");
   }
 
-  if (!parsed.hint?.trim()) {
-    throw new Error("AI response contains an empty hint");
+  const hints = normalizeHintStrings(parsed);
+  if (hints.length !== expectedCount) {
+    throw new Error(`AI response contains ${hints.length} hints, expected ${expectedCount}`);
   }
 
   return parsed;

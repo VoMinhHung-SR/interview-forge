@@ -1,4 +1,5 @@
 import type { AppLocale, GenerateHintsRequest } from "@/shared/types/hints";
+import { HINT_BATCH_SIZE, MAX_HINTS } from "@/shared/types/hints";
 
 const LOCALE_LABELS: Record<AppLocale, string> = {
   en: "English",
@@ -13,7 +14,8 @@ STRICT RULES — violations will cause rejection:
 - NEVER list step-by-step implementation instructions.
 - Each hint must be ONE short sentence (max ~2 lines). Be direct and specific.
 - You MAY name data structures and techniques when helpful (e.g. "Use DFS to compute depth from the root").
-- Each new hint must add NEW information — do not repeat previous hints.
+- Each hint must add NEW information — do not repeat previous hints.
+- Hints must escalate in specificity across the batch.
 
 Language rules:
 - Detect the user's preferred language from the Language field in the user prompt.
@@ -25,16 +27,19 @@ Respond with ONLY valid JSON. No markdown fences, no commentary outside JSON.`;
 
 export const HINT_JSON_SCHEMA = `{
   "language": "en or vi",
-  "hint": "<one concise incremental hint sentence>",
-  "canContinue": <true if another distinct hint could still help, false if the learner has enough direction>,
-  "pattern": "<algorithmic pattern name — required on first hint only, omit on later hints>",
-  "difficulty": "<Easy | Medium | Hard — required on first hint only>"
+  "hints": ["<hint 1>", "<hint 2>", "..."],
+  "canContinue": <true if more distinct hints could help after this batch, false otherwise>,
+  "pattern": "<algorithmic pattern — required on first batch only>",
+  "difficulty": "<Easy | Medium | Hard — required on first batch only>"
 }`;
 
-export function buildHintUserPrompt(request: GenerateHintsRequest): string {
+export function buildHintUserPrompt(
+  request: GenerateHintsRequest,
+  batchSize: number,
+): string {
   const { problem, previousHints, language = "en" } = request;
-  const hintNumber = (previousHints?.length ?? 0) + 1;
-  const isFirstHint = hintNumber === 1;
+  const startIndex = (previousHints?.length ?? 0) + 1;
+  const isFirstBatch = startIndex === 1;
 
   const examplesText = problem.examples
     .map(
@@ -52,18 +57,19 @@ export function buildHintUserPrompt(request: GenerateHintsRequest): string {
 
   const previousText =
     previousHints?.length ?
-      `\nPreviously given hints (do NOT repeat; escalate with the next logical step):\n${previousHints
+      `\nPreviously given hints (do NOT repeat; continue the ladder):\n${previousHints
         .map((h) => `Hint ${h.index}: ${h.text}`)
         .join("\n")}`
     : "";
 
-  const firstHintNote =
-    isFirstHint ?
-      "This is hint 1 — include pattern and difficulty fields."
-    : "This is a follow-up hint — omit pattern and difficulty fields (empty string is fine).";
+  const firstBatchNote =
+    isFirstBatch ?
+      "First batch — include pattern and difficulty fields."
+    : "Follow-up batch — omit pattern and difficulty (empty string is fine).";
 
-  return `Generate exactly ONE new hint (hint #${hintNumber}).
-${firstHintNote}
+  return `Generate exactly ${batchSize} new hint(s), numbered from hint #${startIndex} through #${startIndex + batchSize - 1}.
+Maximum total hints for this problem: ${MAX_HINTS}.
+${firstBatchNote}
 
 Language: ${LOCALE_LABELS[language]} (${language})
 
@@ -73,6 +79,11 @@ ${problem.description}
 
 ${examplesText}${constraintsText}${previousText}
 
-Return JSON matching this exact schema:
+Return JSON matching this exact schema (hints array length must be ${batchSize}):
 ${HINT_JSON_SCHEMA}`;
+}
+
+export function resolveBatchSize(previousCount: number): number {
+  const remaining = MAX_HINTS - previousCount;
+  return Math.min(HINT_BATCH_SIZE, remaining);
 }

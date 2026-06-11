@@ -7,9 +7,11 @@ import type {
   SolutionLatestPointer,
   SubmissionVerdict,
 } from "@/shared/types/solution-analysis";
+import type { HintLadderCache } from "@/shared/types/hints";
 import type { TranslationCacheEntry } from "@/shared/types/translation";
 
 const TRANSLATION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+const HINT_LADDER_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const SOLUTION_TTL_MS = 48 * 60 * 60 * 1000;
 const MAX_SOLUTION_CACHE_ENTRIES = 100;
 
@@ -27,6 +29,19 @@ export async function saveTranslation(
 ): Promise<void> {
   const key = STORAGE_KEYS.translation(entry.problemId, entry.language);
   await storageService.set(key, entry, { ttlMs: TRANSLATION_TTL_MS });
+}
+
+export async function getHintLadder(
+  problemId: string,
+  language: AppLocale,
+): Promise<HintLadderCache | null> {
+  const key = STORAGE_KEYS.hintLadder(problemId, language);
+  return storageService.get<HintLadderCache>(key);
+}
+
+export async function saveHintLadder(entry: HintLadderCache): Promise<void> {
+  const key = STORAGE_KEYS.hintLadder(entry.problemId, entry.language);
+  await storageService.set(key, entry, { ttlMs: HINT_LADDER_TTL_MS });
 }
 
 async function loadSolutionIndex(): Promise<SolutionCacheIndex> {

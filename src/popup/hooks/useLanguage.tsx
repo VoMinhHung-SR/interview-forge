@@ -6,9 +6,9 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { sendMessage } from "@/shared/messaging";
+import { LOCALE_STORAGE_KEY } from "@/shared/constants/extension-storage";
 import type { AppLocale } from "@/popup/locales";
-
-const STORAGE_KEY = "interview_forge_locale";
 
 function detectBrowserLocale(): AppLocale {
   const lang = navigator.language.toLowerCase();
@@ -17,8 +17,8 @@ function detectBrowserLocale(): AppLocale {
 
 async function loadStoredLocale(): Promise<AppLocale | null> {
   try {
-    const result = await chrome.storage.local.get(STORAGE_KEY);
-    const stored = result[STORAGE_KEY];
+    const result = await chrome.storage.local.get(LOCALE_STORAGE_KEY);
+    const stored = result[LOCALE_STORAGE_KEY];
     if (stored === "en" || stored === "vi") return stored;
   } catch {
     /* popup may run outside extension context during dev */
@@ -28,7 +28,7 @@ async function loadStoredLocale(): Promise<AppLocale | null> {
 
 async function persistLocale(locale: AppLocale): Promise<void> {
   try {
-    await chrome.storage.local.set({ [STORAGE_KEY]: locale });
+    await chrome.storage.local.set({ [LOCALE_STORAGE_KEY]: locale });
   } catch {
     /* ignore */
   }
@@ -57,6 +57,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
   const setLocale = useCallback((next: AppLocale) => {
     setLocaleState(next);
     void persistLocale(next);
+    void sendMessage({ type: "REFRESH_CONTEXT_MENUS" });
   }, []);
 
   return (

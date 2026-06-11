@@ -2,6 +2,8 @@
 export type AppLocale = "en" | "vi";
 
 export const MAX_HINTS = 8;
+/** Hints generated per API call (reveal one at a time in UI). */
+export const HINT_BATCH_SIZE = 3;
 
 export interface HintStep {
   index: number;
@@ -13,24 +15,35 @@ export interface MentorMeta {
   difficulty: string;
 }
 
-/** Structured JSON returned by the Hint Engine (one hint per request). */
+/** Structured JSON returned by the Hint Engine (batch per request). */
 export interface HintEngineResponse {
   problemTitle: string;
-  hint: HintStep;
+  hints: HintStep[];
   canContinue: boolean;
   analysis: MentorMeta;
   guardrailPassed: boolean;
   generatedAt: string;
   model: string;
+  cached?: boolean;
 }
 
 /** Raw JSON shape expected from the AI provider. */
 export interface HintEngineJsonPayload {
   language?: string;
-  hint?: string;
+  hints?: string[];
   canContinue?: boolean;
   pattern?: string;
   difficulty?: string;
+}
+
+export interface HintLadderCache {
+  problemId: string;
+  language: AppLocale;
+  hints: string[];
+  canContinue: boolean;
+  pattern: string;
+  difficulty: string;
+  updatedAt: number;
 }
 
 export interface GenerateHintsRequest {
@@ -40,9 +53,10 @@ export interface GenerateHintsRequest {
     examples: Array<{ input: string; output: string; explanation?: string }>;
     constraints?: string[];
   };
+  problemId?: string;
   /** UI locale — AI responds in this language. */
   language?: AppLocale;
-  /** Previously shown hints — used to escalate without repeating. */
+  /** All hints generated so far — used to escalate without repeating. */
   previousHints?: HintStep[];
 }
 
