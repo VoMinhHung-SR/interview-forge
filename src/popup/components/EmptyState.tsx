@@ -16,7 +16,7 @@ export function EmptyState({
   const { t } = useTranslation();
 
   return (
-    <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/80 p-5 text-center">
+    <div className="text-center">
       <p className="text-sm font-medium text-slate-800">{t("emptyTitle")}</p>
       <p className="mt-1.5 text-xs leading-relaxed text-slate-500">
         {t("emptySubtitle")}
@@ -66,11 +66,7 @@ function ActionButton({
       type="button"
       onClick={onClick}
       disabled={loading}
-      className={`rounded-xl px-3 py-2 text-xs font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
-        isPrimary ?
-          "bg-slate-900 text-white hover:bg-slate-800"
-        : "border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-      }`}
+      className={isPrimary ? "btn-primary" : "btn-secondary w-full"}
     >
       {label}
     </button>

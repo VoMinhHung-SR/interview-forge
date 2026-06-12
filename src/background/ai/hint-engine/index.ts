@@ -4,6 +4,5 @@ export {
   validateHintText,
   validateHintPayload,
   parseHintResponse,
-  normalizeHintPayload,
 } from "./guardrails";
 export { buildHintUserPrompt, MENTOR_SYSTEM_PROMPT } from "./prompts";

@@ -20,8 +20,11 @@ export interface SavedProblem {
 
 export interface HintSession {
   problemId: string;
+  /** Number of hints revealed to the user. */
   currentLevel: number;
+  /** Full fetched hint buffer (may include unrevealed hints). */
   hints: string[];
+  canContinue?: boolean;
   updatedAt: number;
 }
 

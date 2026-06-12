@@ -17,12 +17,11 @@ export type {
   HintEngineJsonPayload,
   HintEngineResponse,
   HintEngineResult,
-  HintLevel,
-  HintLevelContent,
-  MentorAnalysis,
-  MentorComplexity,
+  HintLadderCache,
+  HintStep,
+  MentorMeta,
 } from "./hints";
-export { HINT_LEVEL_LABELS } from "./hints";
+export { HINT_BATCH_SIZE, MAX_HINTS } from "./hints";
 export type {
   TranslateProblemRequest,
   TranslateProblemResponse,
@@ -42,3 +41,20 @@ export type {
   UnsaveProblemPayload,
 } from "./persistence";
 export { createEmptyLearningProfile } from "./persistence";
+export type {
+  AnalysisContext,
+  AnalysisSettings,
+  AnalyzeSolutionRequest,
+  SolutionAnalysis,
+  SolutionAnalysisJsonPayload,
+  SolutionAnalysisMode,
+  SolutionCacheIndex,
+  SolutionCacheIndexEntry,
+  SolutionCode,
+  SolutionEngineError,
+  SolutionEngineErrorCode,
+  SolutionEngineResult,
+  SolutionLatestPointer,
+  SubmissionDetectedPayload,
+  SubmissionVerdict,
+} from "./solution-analysis";

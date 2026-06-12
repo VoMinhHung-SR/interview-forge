@@ -1,13 +1,19 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  PENDING_COACH_ACTION_KEY,
+  type PendingCoachAction,
+} from "@/shared/constants/extension-storage";
 import { sendMessage } from "@/shared/messaging";
 import type { ProblemContext } from "@/shared/types";
 import { LanguageProvider } from "@/popup/hooks/useLanguage";
 import { usePersistence } from "@/popup/hooks/usePersistence";
 import { useTranslation } from "@/popup/hooks/useTranslation";
 import { AppHeader } from "./components/AppHeader";
-import { CoachPanel } from "./components/CoachPanel";
+import { CoachPanel, type CoachPanelHandle } from "./components/CoachPanel";
 import { PersistencePanel } from "./components/PersistencePanel";
-import { ProblemSummary } from "./components/ProblemSummary";
+import { ProblemHubPanel } from "./components/ProblemHubPanel";
+import { StickyActionBar } from "./components/StickyActionBar";
+import { useSolutionAnalysis } from "./hooks/useSolutionAnalysis";
 
 function AppContent() {
   const { t, locale, setLocale, ready } = useTranslation();
@@ -17,6 +23,23 @@ function AppContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saveLoading, setSaveLoading] = useState(false);
+  const [stickyVisible, setStickyVisible] = useState(false);
+  const [pendingCoachAction, setPendingCoachAction] =
+    useState<PendingCoachAction | null>(null);
+  const coachRef = useRef<CoachPanelHandle>(null);
+  const coachSentinelRef = useRef<HTMLDivElement>(null);
+  const {
+    analysis: solutionAnalysis,
+    loading: solutionLoading,
+    error: solutionError,
+    analyze: analyzeSolution,
+    settings: analysisSettings,
+    settingsLoading: analysisSettingsLoading,
+    toggleAutoAnalyze,
+  } = useSolutionAnalysis({
+    problemId: problem?.problemId,
+    locale,
+  });
 
   const loadProblem = useCallback(async () => {
     setLoading(true);
@@ -41,6 +64,32 @@ function AppContent() {
   useEffect(() => {
     void loadProblem();
   }, [loadProblem]);
+
+  useEffect(() => {
+    void chrome.storage.session.get(PENDING_COACH_ACTION_KEY).then((result) => {
+      const action = result[PENDING_COACH_ACTION_KEY];
+      if (action === "hint" || action === "review") {
+        setPendingCoachAction(action);
+        void chrome.storage.session.remove(PENDING_COACH_ACTION_KEY);
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    const sentinel = coachSentinelRef.current;
+    if (!sentinel || !problem) {
+      setStickyVisible(false);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setStickyVisible(!entry.isIntersecting),
+      { threshold: 0, rootMargin: "-8px 0px 0px 0px" },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [problem]);
 
   const isCurrentSaved =
     problem?.problemId ?
@@ -95,21 +144,30 @@ function AppContent() {
 
   return (
     <div className="w-[26rem] bg-slate-50 p-4">
+      {problem && (
+        <StickyActionBar
+          problemTitle={problem.title}
+          visible={stickyVisible}
+          onGetHint={() => coachRef.current?.requestHint()}
+        />
+      )}
+
       <div className="space-y-4">
         <AppHeader locale={locale} onLocaleChange={setLocale} />
 
-        <ProblemSummary
+        <ProblemHubPanel
           problem={problem}
-          loading={loading}
-          error={error}
-          onRefresh={loadProblem}
+          problemLoading={loading}
+          problemError={error}
+          onRefreshProblem={loadProblem}
           isSaved={isCurrentSaved}
           onToggleSave={() => void handleToggleSave()}
           saveLoading={saveLoading}
+          recent={recent}
+          recentLoading={persistenceLoading}
         />
 
         <PersistencePanel
-          recent={recent}
           saved={saved}
           profile={profile}
           loading={persistenceLoading}
@@ -117,10 +175,23 @@ function AppContent() {
         />
 
         {problem && (
-          <CoachPanel
-            key={`${problem.url}-${locale}`}
-            problem={problem}
-          />
+          <>
+            <div ref={coachSentinelRef} aria-hidden className="h-0" />
+            <CoachPanel
+              ref={coachRef}
+              key={`${problem.url}-${locale}`}
+              problem={problem}
+              pendingAction={pendingCoachAction}
+              onPendingActionConsumed={() => setPendingCoachAction(null)}
+              solutionAnalysis={solutionAnalysis}
+              solutionLoading={solutionLoading}
+              solutionError={solutionError}
+              autoAnalyzeOnSubmit={analysisSettings.autoAnalyzeOnSubmit}
+              analysisSettingsLoading={analysisSettingsLoading}
+              onAnalyzeSolution={(force) => void analyzeSolution(force)}
+              onToggleAutoAnalyze={(enabled) => void toggleAutoAnalyze(enabled)}
+            />
+          </>
         )}
 
         {!problem && !loading && !error && (

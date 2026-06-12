@@ -1,23 +1,41 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer components {
   .skeleton {
-    @apply animate-pulse bg-slate-200/80 dark:bg-slate-700/70;
+    @apply animate-pulse bg-slate-200/80;
+  }
+
+  .card-hero {
+    @apply rounded-2xl border border-slate-200/80 bg-white p-5 shadow-md;
+  }
+
+  .card {
+    @apply rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm;
+  }
+
+  .section-title {
+    @apply text-sm font-semibold text-slate-700;
+  }
+
+  .btn-primary {
+    @apply w-full rounded-xl bg-brand-600 px-3 py-2.5 text-xs font-medium text-white transition-colors hover:bg-brand-500 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .btn-secondary {
+    @apply rounded-xl border-0 bg-slate-100 px-3 py-2.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50;
   }
 }
 
 body {
   margin: 0;
-  font-family:
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Roboto, sans-serif;
   background: #f8fafc;
+  color-scheme: light;
 }
 
 .loading-spinner {
@@ -53,4 +71,19 @@ body {
 
 .expandable-text-panel {
   transition: max-height 0.3s ease-in-out;
+}
+
+@keyframes fade-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hint-reveal {
+  animation: fade-slide-up 0.3s ease-out;
 }

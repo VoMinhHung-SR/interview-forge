@@ -29,3 +29,31 @@ export const DESCRIPTION_SELECTORS = [
   "div.elfjS",
   "div.xFUwe",
 ] as const;
+
+export const EDITOR_CONTAINER_SELECTORS = [
+  '[data-cy="code-area"]',
+  ".monaco-editor",
+  '[class*="monaco-editor"]',
+] as const;
+
+export const LANGUAGE_SELECTORS = [
+  '[data-cy="lang-select"]',
+  "#lang-select",
+  'button[id*="headlessui"]',
+  '[class*="lang-select"]',
+] as const;
+
+export const SUBMIT_BUTTON_SELECTORS = [
+  '[data-cy="submit-code-btn"]',
+  '[data-e2e-locator="console-submit-button"]',
+  "#submit_code_btn",
+  'button[type="submit"]',
+] as const;
+
+export const RESULT_PANEL_SELECTORS = [
+  '[data-e2e-locator="submission-result"]',
+  '[class*="submission-result"]',
+  '[class*="result-state"]',
+  "#result-state",
+  '[data-cy="submission-result"]',
+] as const;

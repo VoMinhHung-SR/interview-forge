@@ -1,11 +1,4 @@
-import type {
-  AppLocale,
-  HintEngineJsonPayload,
-  HintLevel,
-  HintLevelContent,
-  MentorAnalysis,
-} from "@/shared/types/hints";
-import { HINT_LEVEL_LABELS } from "@/shared/types/hints";
+import type { HintEngineJsonPayload, MentorMeta } from "@/shared/types/hints";
 
 const CODE_FENCE_PATTERN = /```/;
 const FUNCTION_PATTERN =
@@ -20,29 +13,6 @@ const FULL_SOLUTION_PHRASES = [
 export interface GuardrailResult {
   passed: boolean;
   violations: string[];
-}
-
-function hintEntries(payload: HintEngineJsonPayload): Array<{
-  level: HintLevel;
-  text: string;
-}> {
-  if (
-    Array.isArray(payload.hints) &&
-    payload.hints.length > 0 &&
-    typeof payload.hints[0] === "string"
-  ) {
-    return (payload.hints as string[])
-      .slice(0, 3)
-      .map((text, index) => ({
-        level: (index + 1) as HintLevel,
-        text: text.trim(),
-      }))
-      .filter((h) => h.text.length > 0);
-  }
-
-  return (payload.hints as Array<{ level: HintLevel; text: string }>)
-    .filter((h) => [1, 2, 3].includes(h.level))
-    .map((h) => ({ level: h.level, text: h.text.trim() }));
 }
 
 /**
@@ -69,54 +39,50 @@ export function validateHintText(text: string): GuardrailResult {
   return { passed: violations.length === 0, violations };
 }
 
+function normalizeHintStrings(payload: HintEngineJsonPayload): string[] {
+  if (!Array.isArray(payload.hints)) return [];
+  return payload.hints
+    .filter((item): item is string => typeof item === "string")
+    .map((text) => text.trim())
+    .filter((text) => text.length > 0);
+}
+
 /**
  * Validates all hints in an AI response payload.
  */
 export function validateHintPayload(
   payload: HintEngineJsonPayload,
+  expectedCount: number,
 ): GuardrailResult {
+  const hints = normalizeHintStrings(payload);
   const violations: string[] = [];
 
-  for (const hint of hintEntries(payload)) {
-    const result = validateHintText(hint.text);
-    violations.push(...result.violations.map((v) => `Level ${hint.level}: ${v}`));
+  if (hints.length === 0) {
+    violations.push("Empty hints array");
+  }
+  if (hints.length !== expectedCount) {
+    violations.push(`Expected ${expectedCount} hint(s), got ${hints.length}`);
+  }
+
+  for (let i = 0; i < hints.length; i++) {
+    const result = validateHintText(hints[i]);
+    violations.push(...result.violations.map((v) => `Hint ${i + 1}: ${v}`));
   }
 
   return { passed: violations.length === 0, violations };
 }
 
-function normalizeLocale(value: string | undefined): AppLocale {
-  return value?.toLowerCase().startsWith("vi") ? "vi" : "en";
+export function extractHintStrings(payload: HintEngineJsonPayload): string[] {
+  return normalizeHintStrings(payload);
 }
 
-/**
- * Normalizes raw AI JSON into strongly typed hint content.
- */
-export function normalizeHintPayload(
+export function normalizeMetaPayload(
   payload: HintEngineJsonPayload,
-): HintLevelContent[] {
-  return hintEntries(payload)
-    .sort((a, b) => a.level - b.level)
-    .map((h) => ({
-      level: h.level,
-      label: HINT_LEVEL_LABELS[h.level],
-      text: h.text,
-    }));
-}
-
-export function normalizeAnalysisPayload(
-  payload: HintEngineJsonPayload,
-  fallbackLocale: AppLocale = "en",
-): MentorAnalysis {
+  isFirstBatch: boolean,
+): MentorMeta {
   return {
-    language: normalizeLocale(payload.language ?? fallbackLocale),
-    pattern: payload.pattern?.trim() || "Unknown",
-    difficulty: payload.difficulty?.trim() || "Unknown",
-    summary: payload.summary?.trim() || "",
-    complexity: {
-      time: payload.complexity?.time?.trim() || "—",
-      space: payload.complexity?.space?.trim() || "—",
-    },
+    pattern: isFirstBatch ? payload.pattern?.trim() || "Unknown" : "",
+    difficulty: isFirstBatch ? payload.difficulty?.trim() || "Unknown" : "",
   };
 }
 
@@ -134,28 +100,19 @@ export function extractJsonFromResponse(raw: string): string {
   return raw.trim();
 }
 
-function isHintArray(value: unknown): boolean {
-  if (!Array.isArray(value) || value.length === 0) return false;
-  return value.every(
-    (item) =>
-      typeof item === "string" ||
-      (typeof item === "object" &&
-        item !== null &&
-        typeof (item as Record<string, unknown>).text === "string" &&
-        [1, 2, 3].includes((item as Record<string, unknown>).level as number)),
-  );
-}
-
 function isHintEngineJsonPayload(value: unknown): value is HintEngineJsonPayload {
   if (typeof value !== "object" || value === null) return false;
   const record = value as Record<string, unknown>;
-  return isHintArray(record.hints);
+  return Array.isArray(record.hints);
 }
 
 /**
  * Parses and validates the AI response into a typed JSON payload.
  */
-export function parseHintResponse(raw: string): HintEngineJsonPayload {
+export function parseHintResponse(
+  raw: string,
+  expectedCount: number,
+): HintEngineJsonPayload {
   const jsonText = extractJsonFromResponse(raw);
   const parsed: unknown = JSON.parse(jsonText);
 
@@ -163,9 +120,9 @@ export function parseHintResponse(raw: string): HintEngineJsonPayload {
     throw new Error("AI response does not match HintEngineJsonPayload schema");
   }
 
-  const entries = hintEntries(parsed);
-  if (entries.length === 0) {
-    throw new Error("AI response contains no hints");
+  const hints = normalizeHintStrings(parsed);
+  if (hints.length !== expectedCount) {
+    throw new Error(`AI response contains ${hints.length} hints, expected ${expectedCount}`);
   }
 
   return parsed;

@@ -3,6 +3,8 @@ export interface AiCompletionRequest {
   userPrompt: string;
   temperature?: number;
   responseFormat?: "json" | "text";
+  /** Request timeout in ms. Defaults to provider default (15s). */
+  timeoutMs?: number;
 }
 
 export interface AiCompletionResponse {

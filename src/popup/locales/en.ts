@@ -20,7 +20,9 @@ export const en = {
 
   actions: "Actions",
   getHint: "Get Hint",
-  nextHint: "Next Hint (Level {{level}})",
+  nextHint: "Next Hint",
+  reviewSolution: "Review Code",
+  nextStepReview: "Have code? Tap Review Code for feedback.",
   analyzePattern: "Analyze Pattern",
   complexity: "Complexity",
   generating: "Generating…",
@@ -37,8 +39,11 @@ export const en = {
   space: "Space",
 
   emptyTitle: "Need help solving this problem?",
-  emptySubtitle: "Get progressive hints, pattern analysis, and complexity — without spoiling the full solution.",
-  allHintsShown: "All hint levels shown. Try solving from here!",
+  emptySubtitle:
+    "Get step-by-step hints and code feedback — without spoiling the full solution.",
+  contextMenuHint:
+    "Right-click anywhere on the problem page → Interview Forge → Get Hint or Review Code.",
+  allHintsShown: "Enough hints for now — try coding, then review your solution.",
 
   loadingHint: "Generating hint",
   loadingPattern: "Analyzing pattern",
@@ -60,7 +65,9 @@ export const en = {
   languageEn: "English",
   languageVi: "Vietnamese",
 
-  recentProblems: "Recent Problems",
+  recentProblems: "Recent",
+  recentProblemsEmpty: "No recent problems yet. Open a LeetCode problem to get started.",
+  showRecentProblems: "Show recent problems",
   recentProblemNoUrl: "Open this problem once to restore its link",
   savedProblems: "Saved Problems",
   learningProfile: "Learning Profile",
@@ -69,6 +76,32 @@ export const en = {
   problemsViewed: "Problems Viewed",
   hintsRequested: "Hints Requested",
   topPatterns: "Top Patterns",
+
+  solutionAnalysisTitle: "Your Code Analysis",
+  solutionAnalysisSubtitle: "Pattern, complexity, and interview feedback on your solution",
+  solutionAnalyze: "Analyze Solution",
+  solutionReanalyze: "Re-analyze",
+  solutionCached: "Cached",
+  solutionYourCode: "Detected Approach",
+  solutionBottlenecks: "Bottlenecks",
+  solutionOptimizations: "Optimizations",
+  solutionEdgeCases: "Missed Edge Cases",
+  solutionRecommended: "Suggested",
+  solutionInterviewFeedback: "Interview Feedback",
+  solutionStrengths: "Strengths",
+  solutionImprovements: "Areas to Improve",
+  solutionLegacyFeedback: "Previous format — re-analyze for structured feedback",
+  solutionLoading: "Analyzing your solution",
+  solutionLoadingRead: "Reading your code…",
+  solutionLoadingAnalyze: "Evaluating complexity…",
+  solutionLoadingContact: "Contacting Gemini…",
+  solutionAutoAnalyzeOnSubmit: "Auto-analyze after submit",
+  solutionModeManual: "Manual analysis",
+  solutionVerdict_accepted: "After submit · Accepted",
+  solutionVerdict_wrong_answer: "After submit · Wrong Answer",
+  solutionVerdict_tle: "After submit · Time Limit",
+  solutionVerdict_runtime_error: "After submit · Runtime Error",
+  solutionVerdict_compile_error: "After submit · Compile Error",
 } as const;
 
 export type TranslationKey = keyof typeof en;

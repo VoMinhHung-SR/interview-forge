@@ -1,21 +1,21 @@
 import type { AppLocale, GenerateHintsRequest } from "@/shared/types/hints";
+import { HINT_BATCH_SIZE, MAX_HINTS } from "@/shared/types/hints";
 
 const LOCALE_LABELS: Record<AppLocale, string> = {
   en: "English",
   vi: "Vietnamese",
 };
 
-export const MENTOR_SYSTEM_PROMPT = `You are an expert coding interview mentor. Guide the learner toward discovering the solution themselves.
+export const MENTOR_SYSTEM_PROMPT = `You are an expert coding interview mentor. Give concise, incremental hints like LeetCode — one short guiding sentence per hint.
 
 STRICT RULES — violations will cause rejection:
 - NEVER provide complete solutions, full algorithms, or runnable code.
-- NEVER write function implementations, pseudocode with full logic, or step-by-step code.
-- NEVER name the exact data structure AND the exact technique together (e.g. "use a hash map with two pointers sliding window").
-
-Hint level guidelines (hints array index 0 = level 1, index 1 = level 2, index 2 = level 3):
-- Level 1 (abstract): High-level thinking questions. No data structures or algorithms named.
-- Level 2 (specific): Narrow the problem space. Ask about edge cases or sub-problems. Still no algorithm names.
-- Level 3 (direction): Suggest an approach category or technique name only. Still no code or implementation steps.
+- NEVER write function implementations or pseudocode with full logic.
+- NEVER list step-by-step implementation instructions.
+- Each hint must be ONE short sentence (max ~2 lines). Be direct and specific.
+- You MAY name data structures and techniques when helpful (e.g. "Use DFS to compute depth from the root").
+- Each hint must add NEW information — do not repeat previous hints.
+- Hints must escalate in specificity across the batch.
 
 Language rules:
 - Detect the user's preferred language from the Language field in the user prompt.
@@ -27,22 +27,19 @@ Respond with ONLY valid JSON. No markdown fences, no commentary outside JSON.`;
 
 export const HINT_JSON_SCHEMA = `{
   "language": "en or vi",
-  "pattern": "<algorithmic pattern name, e.g. Prefix Sum>",
-  "difficulty": "<Easy | Medium | Hard>",
-  "summary": "<one concise sentence describing the problem goal>",
-  "hints": [
-    "<level 1 abstract guiding question>",
-    "<level 2 more specific guiding question>",
-    "<level 3 technique or approach name only>"
-  ],
-  "complexity": {
-    "time": "<e.g. O(n)>",
-    "space": "<e.g. O(1)>"
-  }
+  "hints": ["<hint 1>", "<hint 2>", "..."],
+  "canContinue": <true if more distinct hints could help after this batch, false otherwise>,
+  "pattern": "<algorithmic pattern — required on first batch only>",
+  "difficulty": "<Easy | Medium | Hard — required on first batch only>"
 }`;
 
-export function buildHintUserPrompt(request: GenerateHintsRequest): string {
-  const { problem, maxLevel, previousHints, language = "en" } = request;
+export function buildHintUserPrompt(
+  request: GenerateHintsRequest,
+  batchSize: number,
+): string {
+  const { problem, previousHints, language = "en" } = request;
+  const startIndex = (previousHints?.length ?? 0) + 1;
+  const isFirstBatch = startIndex === 1;
 
   const examplesText = problem.examples
     .map(
@@ -60,17 +57,19 @@ export function buildHintUserPrompt(request: GenerateHintsRequest): string {
 
   const previousText =
     previousHints?.length ?
-      `\nPreviously given hints (do NOT repeat; escalate specificity):\n${previousHints
-        .map((h) => `Level ${h.level}: ${h.text}`)
+      `\nPreviously given hints (do NOT repeat; continue the ladder):\n${previousHints
+        .map((h) => `Hint ${h.index}: ${h.text}`)
         .join("\n")}`
     : "";
 
-  const levelInstruction =
-    maxLevel ?
-      `Generate hints for levels 1 through ${maxLevel} only (leave higher levels as empty strings).`
-    : "Generate all three hint levels.";
+  const firstBatchNote =
+    isFirstBatch ?
+      "First batch — include pattern and difficulty fields."
+    : "Follow-up batch — omit pattern and difficulty (empty string is fine).";
 
-  return `${levelInstruction}
+  return `Generate exactly ${batchSize} new hint(s), numbered from hint #${startIndex} through #${startIndex + batchSize - 1}.
+Maximum total hints for this problem: ${MAX_HINTS}.
+${firstBatchNote}
 
 Language: ${LOCALE_LABELS[language]} (${language})
 
@@ -80,6 +79,11 @@ ${problem.description}
 
 ${examplesText}${constraintsText}${previousText}
 
-Return JSON matching this exact schema:
+Return JSON matching this exact schema (hints array length must be ${batchSize}):
 ${HINT_JSON_SCHEMA}`;
+}
+
+export function resolveBatchSize(previousCount: number): number {
+  const remaining = MAX_HINTS - previousCount;
+  return Math.min(HINT_BATCH_SIZE, remaining);
 }

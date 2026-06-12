@@ -1,10 +1,15 @@
 import type { ProblemContext } from "./problem-context";
-import type { GenerateHintsRequest, HintLevel } from "./hints";
+import type { GenerateHintsRequest } from "./hints";
 import type {
   HintSession,
   SaveProblemPayload,
   UnsaveProblemPayload,
 } from "./persistence";
+import type {
+  AnalysisSettings,
+  AnalyzeSolutionRequest,
+  SubmissionDetectedPayload,
+} from "./solution-analysis";
 import type { TranslateProblemRequest } from "./translation";
 
 /** Discriminated union of extension message payloads. */
@@ -14,7 +19,7 @@ export type ExtensionMessage =
   | { type: "PROBLEM_CONTEXT"; payload: ProblemContext | null }
   | {
       type: "GENERATE_HINTS";
-      payload: GenerateHintsRequest & { level?: HintLevel };
+      payload: GenerateHintsRequest;
     }
   | {
       type: "TRANSLATE_PROBLEM";
@@ -26,7 +31,18 @@ export type ExtensionMessage =
   | { type: "UNSAVE_PROBLEM"; payload: UnsaveProblemPayload }
   | { type: "GET_HINT_SESSION"; payload: { problemId: string } }
   | { type: "UPDATE_HINT_SESSION"; payload: HintSession }
-  | { type: "GET_LEARNING_PROFILE" };
+  | { type: "GET_LEARNING_PROFILE" }
+  | { type: "GET_ANALYSIS_CONTEXT" }
+  | { type: "ANALYZE_SOLUTION"; payload?: AnalyzeSolutionRequest }
+  | { type: "GET_SOLUTION_ANALYSIS"; payload: { problemId: string } }
+  | { type: "SUBMISSION_DETECTED"; payload: SubmissionDetectedPayload }
+  | { type: "GET_ANALYSIS_SETTINGS" }
+  | {
+      type: "SET_ANALYSIS_SETTINGS";
+      payload: Partial<AnalysisSettings>;
+    }
+  | { type: "CLEAR_ANALYSIS_BADGE" }
+  | { type: "REFRESH_CONTEXT_MENUS" };
 
 export type ExtensionResponse<T = unknown> =
   | { ok: true; data: T }

@@ -68,7 +68,7 @@ export function ExpandableText({
       >
         <p
           ref={contentRef}
-          className={`whitespace-pre-wrap break-words text-xs leading-relaxed text-slate-600 dark:text-slate-300 ${
+          className={`whitespace-pre-wrap break-words text-sm leading-relaxed text-slate-600 ${
             expanded ? "" : lineClampClass
           }`}
         >
@@ -80,7 +80,7 @@ export function ExpandableText({
         <button
           type="button"
           onClick={() => setExpanded((current) => !current)}
-          className="mt-1.5 text-xs font-medium text-blue-600 transition-colors hover:text-blue-700 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
+          className="mt-1.5 text-xs font-medium text-brand-600 transition-colors hover:text-brand-700 hover:underline"
           aria-label={toggleLabel}
         >
           {toggleLabel}

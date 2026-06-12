@@ -4,6 +4,7 @@
  */
 
 import { detectPlatform } from "@/content/platforms";
+import { initSubmissionObserver } from "@/content/platforms/leetcode";
 import { onContentMessage } from "@/content/messaging";
 
 declare global {
@@ -23,6 +24,10 @@ if (window.__ifContentScriptLoaded) {
     "[Coding Interview Coach] Content script loaded:",
     platform ?? "unsupported",
   );
+
+  if (platform === "leetcode") {
+    initSubmissionObserver(document);
+  }
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     onContentMessage(message)
