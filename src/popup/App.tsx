@@ -4,30 +4,40 @@ import {
   type PendingCoachAction,
 } from "@/shared/constants/extension-storage";
 import { sendMessage } from "@/shared/messaging";
-import type { ProblemContext } from "@/shared/types";
 import { LanguageProvider } from "@/popup/hooks/useLanguage";
-import { usePersistence } from "@/popup/hooks/usePersistence";
+import { usePopupInit } from "@/popup/hooks/usePopupInit";
+import { useSolutionAnalysis } from "@/popup/hooks/useSolutionAnalysis";
 import { useTranslation } from "@/popup/hooks/useTranslation";
 import { AppHeader } from "./components/AppHeader";
 import { CoachPanel, type CoachPanelHandle } from "./components/CoachPanel";
 import { PersistencePanel } from "./components/PersistencePanel";
 import { ProblemHubPanel } from "./components/ProblemHubPanel";
 import { StickyActionBar } from "./components/StickyActionBar";
-import { useSolutionAnalysis } from "./hooks/useSolutionAnalysis";
 
 function AppContent() {
   const { t, locale, setLocale, ready } = useTranslation();
-  const { recent, saved, profile, refresh, loading: persistenceLoading } =
-    usePersistence();
-  const [problem, setProblem] = useState<ProblemContext | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    problem,
+    recent,
+    saved,
+    profile,
+    hintSession,
+    analysis: initialAnalysis,
+    analysisSettings: initialAnalysisSettings,
+    translation,
+    loading,
+    error,
+    reload,
+    refreshPersistence,
+  } = usePopupInit(locale);
+
   const [saveLoading, setSaveLoading] = useState(false);
   const [stickyVisible, setStickyVisible] = useState(false);
   const [pendingCoachAction, setPendingCoachAction] =
     useState<PendingCoachAction | null>(null);
   const coachRef = useRef<CoachPanelHandle>(null);
   const coachSentinelRef = useRef<HTMLDivElement>(null);
+
   const {
     analysis: solutionAnalysis,
     loading: solutionLoading,
@@ -39,31 +49,9 @@ function AppContent() {
   } = useSolutionAnalysis({
     problemId: problem?.problemId,
     locale,
+    initialAnalysis,
+    initialSettings: initialAnalysisSettings,
   });
-
-  const loadProblem = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
-    const response = await sendMessage<ProblemContext | null>({
-      type: "GET_PROBLEM_CONTEXT",
-    });
-
-    setLoading(false);
-
-    if (!response.ok) {
-      setError(response.error);
-      setProblem(null);
-      return;
-    }
-
-    setProblem(response.data);
-    void refresh();
-  }, [refresh]);
-
-  useEffect(() => {
-    void loadProblem();
-  }, [loadProblem]);
 
   useEffect(() => {
     void chrome.storage.session.get(PENDING_COACH_ACTION_KEY).then((result) => {
@@ -119,9 +107,9 @@ function AppContent() {
       });
     }
 
-    await refresh();
+    await refreshPersistence();
     setSaveLoading(false);
-  }, [problem, isCurrentSaved, refresh]);
+  }, [problem, isCurrentSaved, refreshPersistence]);
 
   const handleUnsave = useCallback(
     async (problemId: string) => {
@@ -129,9 +117,9 @@ function AppContent() {
         type: "UNSAVE_PROBLEM",
         payload: { problemId },
       });
-      await refresh();
+      await refreshPersistence();
     },
-    [refresh],
+    [refreshPersistence],
   );
 
   if (!ready) {
@@ -159,18 +147,19 @@ function AppContent() {
           problem={problem}
           problemLoading={loading}
           problemError={error}
-          onRefreshProblem={loadProblem}
+          onRefreshProblem={() => void reload()}
           isSaved={isCurrentSaved}
           onToggleSave={() => void handleToggleSave()}
           saveLoading={saveLoading}
           recent={recent}
-          recentLoading={persistenceLoading}
+          recentLoading={loading}
+          initialTranslation={translation}
         />
 
         <PersistencePanel
           saved={saved}
           profile={profile}
-          loading={persistenceLoading}
+          loading={loading}
           onUnsave={(problemId) => void handleUnsave(problemId)}
         />
 
@@ -181,6 +170,8 @@ function AppContent() {
               ref={coachRef}
               key={`${problem.url}-${locale}`}
               problem={problem}
+              profile={profile}
+              initialHintSession={hintSession}
               pendingAction={pendingCoachAction}
               onPendingActionConsumed={() => setPendingCoachAction(null)}
               solutionAnalysis={solutionAnalysis}

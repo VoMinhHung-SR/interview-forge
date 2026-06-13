@@ -5,6 +5,7 @@
 
 import { detectPlatform } from "@/content/platforms";
 import { initSubmissionObserver } from "@/content/platforms/leetcode";
+import { initProblemCache } from "@/content/problem-cache";
 import { onContentMessage } from "@/content/messaging";
 
 declare global {
@@ -27,6 +28,10 @@ if (window.__ifContentScriptLoaded) {
 
   if (platform === "leetcode") {
     initSubmissionObserver(document);
+  }
+
+  if (platform === "leetcode" || platform === "hackerrank") {
+    initProblemCache(document, window.location.href);
   }
 
   chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {

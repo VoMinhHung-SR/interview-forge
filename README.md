@@ -9,9 +9,12 @@ An AI-powered browser extension that acts as a coding interview mentor — progr
 - Vite + [@crxjs/vite-plugin](https://crxjs.dev/vite-plugin)
 - Tailwind CSS
 
-## Project Structure
+## Documentation
 
-See [ARCHITECTURE.md](./ARCHITECTURE.md) for folder layout, message flow, and milestone ownership map.
+| File | Purpose |
+|------|---------|
+| [FEATURES.md](./FEATURES.md) | Product feature inventory |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | Folder layout, message flow, and technical guide |
 
 ## Getting Started
 

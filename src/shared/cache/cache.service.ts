@@ -14,6 +14,42 @@ const TRANSLATION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const HINT_LADDER_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const SOLUTION_TTL_MS = 48 * 60 * 60 * 1000;
 const MAX_SOLUTION_CACHE_ENTRIES = 100;
+const MAX_TRANSLATION_CACHE_ENTRIES = 200;
+
+interface TranslationIndexEntry {
+  cacheKey: string;
+  problemId: string;
+  language: AppLocale;
+  createdAt: number;
+}
+
+interface TranslationCacheIndex {
+  entries: TranslationIndexEntry[];
+}
+
+async function loadTranslationIndex(): Promise<TranslationCacheIndex> {
+  return (
+    (await storageService.get<TranslationCacheIndex>(
+      STORAGE_KEYS.translationIndex,
+    )) ?? { entries: [] }
+  );
+}
+
+async function persistTranslationIndex(index: TranslationCacheIndex): Promise<void> {
+  await storageService.set(STORAGE_KEYS.translationIndex, index);
+}
+
+async function pruneTranslationIndex(
+  index: TranslationCacheIndex,
+): Promise<TranslationCacheIndex> {
+  const sorted = [...index.entries].sort((a, b) => b.createdAt - a.createdAt);
+  const kept = sorted.slice(0, MAX_TRANSLATION_CACHE_ENTRIES);
+  const removed = sorted.slice(MAX_TRANSLATION_CACHE_ENTRIES);
+
+  await Promise.all(removed.map((entry) => storageService.remove(entry.cacheKey)));
+
+  return { entries: kept };
+}
 
 export async function getTranslation(
   problemId: string,
@@ -29,6 +65,21 @@ export async function saveTranslation(
 ): Promise<void> {
   const key = STORAGE_KEYS.translation(entry.problemId, entry.language);
   await storageService.set(key, entry, { ttlMs: TRANSLATION_TTL_MS });
+
+  const index = await loadTranslationIndex();
+  const without = index.entries.filter((item) => item.cacheKey !== key);
+  const updated: TranslationCacheIndex = {
+    entries: [
+      {
+        cacheKey: key,
+        problemId: entry.problemId,
+        language: entry.language,
+        createdAt: entry.createdAt,
+      },
+      ...without,
+    ],
+  };
+  await persistTranslationIndex(await pruneTranslationIndex(updated));
 }
 
 export async function getHintLadder(

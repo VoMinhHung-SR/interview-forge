@@ -5,12 +5,19 @@ import type {
   ProblemContext,
 } from "@/shared/types";
 import { extractProblemContext } from "@/content/extract-problem-context";
+import { getCachedProblemContext, refreshProblemCache } from "@/content/problem-cache";
 import { extractSolutionCode } from "@/content/platforms/leetcode/extract-solution-code";
 
 export async function handleGetProblemContext(): Promise<
   ExtensionResponse<ProblemContext | null>
 > {
-  const context = extractProblemContext(document, window.location.href);
+  const url = window.location.href;
+  const cached = getCachedProblemContext(url);
+  if (cached) {
+    return { ok: true, data: cached };
+  }
+
+  const context = refreshProblemCache(document, url);
   return { ok: true, data: context };
 }
 

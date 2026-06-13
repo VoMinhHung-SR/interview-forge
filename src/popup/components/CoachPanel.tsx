@@ -12,6 +12,7 @@ import type {
   HintEngineResponse,
   HintSession,
   HintStep,
+  LearningProfile,
   ProblemContext,
   SolutionAnalysis,
   SubmissionVerdict,
@@ -27,6 +28,8 @@ import { LoadingProgress } from "./LoadingProgress";
 
 interface CoachPanelProps {
   problem: ProblemContext;
+  profile?: LearningProfile | null;
+  initialHintSession?: HintSession | null;
   pendingAction?: PendingCoachAction | null;
   onPendingActionConsumed?: () => void;
   solutionAnalysis: SolutionAnalysis | null;
@@ -203,6 +206,8 @@ export const CoachPanel = forwardRef<CoachPanelHandle, CoachPanelProps>(
   function CoachPanel(
     {
       problem,
+      profile = null,
+      initialHintSession,
       pendingAction = null,
       onPendingActionConsumed,
       solutionAnalysis,
@@ -249,11 +254,29 @@ export const CoachPanel = forwardRef<CoachPanelHandle, CoachPanelProps>(
             hints: buffer,
             canContinue: continueFlag,
             updatedAt: Date.now(),
+            locale,
           },
         });
       },
-      [problem.problemId],
+      [problem.problemId, locale],
     );
+
+    const applyHintSession = useCallback((session: HintSession | null) => {
+      if (session && session.currentLevel > 0) {
+        setHintBuffer(session.hints);
+        setVisibleCount(session.currentLevel);
+        setCanContinue(
+          session.canContinue ??
+            (session.currentLevel < session.hints.length ||
+              session.currentLevel < MAX_HINTS),
+        );
+      } else {
+        setHintBuffer([]);
+        setVisibleCount(0);
+        setCanContinue(true);
+      }
+      setSessionLoaded(true);
+    }, []);
 
     useEffect(() => {
       if (!problem.problemId) {
@@ -261,25 +284,24 @@ export const CoachPanel = forwardRef<CoachPanelHandle, CoachPanelProps>(
         return;
       }
 
+      if (initialHintSession !== undefined) {
+        applyHintSession(initialHintSession);
+        return;
+      }
+
       void (async () => {
         const result = await sendMessage<HintSession | null>({
           type: "GET_HINT_SESSION",
-          payload: { problemId: problem.problemId! },
+          payload: { problemId: problem.problemId!, locale },
         });
 
-        if (result.ok && result.data && result.data.currentLevel > 0) {
-          setHintBuffer(result.data.hints);
-          setVisibleCount(result.data.currentLevel);
-          setCanContinue(
-            result.data.canContinue ??
-              (result.data.currentLevel < result.data.hints.length ||
-                result.data.currentLevel < MAX_HINTS),
-          );
+        if (result.ok) {
+          applyHintSession(result.data);
+        } else {
+          setSessionLoaded(true);
         }
-
-        setSessionLoaded(true);
       })();
-    }, [problem.problemId]);
+    }, [problem.problemId, locale, initialHintSession, applyHintSession]);
 
     async function handleGetHint() {
       if (hintLoading || !sessionLoaded || !canRequestMoreHints) return;
@@ -351,8 +373,15 @@ export const CoachPanel = forwardRef<CoachPanelHandle, CoachPanelProps>(
 
     function handleReviewSolution() {
       if (reviewLoading || !isLeetCode) return;
+      if (solutionAnalysis) return;
       setLoadingAction("review");
-      onAnalyzeSolution(Boolean(solutionAnalysis));
+      onAnalyzeSolution(false);
+    }
+
+    function handleReanalyze() {
+      if (reviewLoading || !isLeetCode) return;
+      setLoadingAction("review");
+      onAnalyzeSolution(true);
     }
 
     useEffect(() => {
@@ -411,6 +440,11 @@ export const CoachPanel = forwardRef<CoachPanelHandle, CoachPanelProps>(
         t("solutionModeManual")
       : null;
 
+    const topPatternEntry =
+      profile ?
+        Object.entries(profile.patterns).sort((a, b) => b[1] - a[1])[0]
+      : undefined;
+
     if (!sessionLoaded) {
       return <SkeletonLoader variant="generic" />;
     }
@@ -431,6 +465,22 @@ export const CoachPanel = forwardRef<CoachPanelHandle, CoachPanelProps>(
                   {t("contextMenuHint")}
                 </p>
               )}
+              {initialHintSession && initialHintSession.currentLevel > 0 && (
+                <p className="mt-3 rounded-lg border border-blue-100 bg-blue-50/60 px-3 py-2.5 text-xs leading-relaxed text-blue-900">
+                  {t("coachResumeHint", {
+                    current: initialHintSession.currentLevel,
+                    max: MAX_HINTS,
+                  })}
+                </p>
+              )}
+              {topPatternEntry && (
+                <p className="mt-2 text-xs text-slate-500">
+                  {t("coachTopPattern", {
+                    pattern: topPatternEntry[0],
+                    count: topPatternEntry[1],
+                  })}
+                </p>
+              )}
             </div>
           </section>
         )}
@@ -447,12 +497,17 @@ export const CoachPanel = forwardRef<CoachPanelHandle, CoachPanelProps>(
                   variant="primary"
                 />
               )}
-              {isLeetCode && (
+              {isLeetCode && !solutionAnalysis && (
                 <ActionButton
-                  label={
-                    solutionAnalysis ? t("solutionReanalyze") : t("reviewSolution")
-                  }
+                  label={t("reviewSolution")}
                   onClick={handleReviewSolution}
+                  loading={reviewLoading && loadingAction === "review"}
+                />
+              )}
+              {isLeetCode && solutionAnalysis && (
+                <ActionButton
+                  label={t("solutionReanalyze")}
+                  onClick={handleReanalyze}
                   loading={reviewLoading && loadingAction === "review"}
                 />
               )}

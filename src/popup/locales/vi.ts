@@ -45,6 +45,8 @@ export const vi: Record<TranslationKey, string> = {
     "Nhận gợi ý từng bước và nhận xét code — không tiết lộ lời giải hoàn chỉnh.",
   contextMenuHint:
     "Chuột phải trên trang bài toán → Interview Forge → Gợi ý hoặc Nhận xét code.",
+  coachResumeHint: "Bạn đang ở gợi ý {{current}}/{{max}} — bấm Gợi ý tiếp để tiếp tục.",
+  coachTopPattern: "Pattern luyện nhiều nhất: {{pattern}} ({{count}} lần)",
   allHintsShown: "Đã đủ gợi ý — thử code rồi nhận xét lời giải.",
 
   loadingHint: "Đang tạo gợi ý",

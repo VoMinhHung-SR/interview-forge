@@ -56,7 +56,10 @@ registerHandler("GET_HINT_SESSION", async (message) => {
     return { ok: false, error: "Invalid message type." };
   }
 
-  const data = await getSession(message.payload.problemId);
+  const data = await getSession(
+    message.payload.problemId,
+    message.payload.locale,
+  );
   return { ok: true, data } satisfies ExtensionResponse<HintSession | null>;
 });
 
@@ -65,7 +68,8 @@ registerHandler("UPDATE_HINT_SESSION", async (message) => {
     return { ok: false, error: "Invalid message type." };
   }
 
-  const data = await saveSession(message.payload);
+  const { locale, ...session } = message.payload;
+  const data = await saveSession(session, locale);
   return { ok: true, data } satisfies ExtensionResponse<HintSession>;
 });
 

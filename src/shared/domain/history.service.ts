@@ -2,7 +2,7 @@ import { STORAGE_KEYS } from "@/shared/constants/storage-keys";
 import { storageService } from "@/shared/storage";
 import type { RecentProblem } from "@/shared/types/persistence";
 
-const MAX_RECENT = 3;
+const MAX_RECENT = 20;
 
 async function loadRecentProblems(): Promise<RecentProblem[]> {
   return (await storageService.get<RecentProblem[]>(STORAGE_KEYS.recentProblems)) ?? [];

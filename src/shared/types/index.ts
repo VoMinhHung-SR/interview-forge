@@ -40,7 +40,11 @@ export type {
   SavedProblem,
   UnsaveProblemPayload,
 } from "./persistence";
-export { createEmptyLearningProfile } from "./persistence";
+export type {
+  PopupInitData,
+  PopupInitRequest,
+  PopupInitTranslation,
+} from "./popup-init";
 export type {
   AnalysisContext,
   AnalysisSettings,
@@ -58,3 +62,4 @@ export type {
   SubmissionDetectedPayload,
   SubmissionVerdict,
 } from "./solution-analysis";
+export { createEmptyLearningProfile } from "./persistence";

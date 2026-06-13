@@ -1,10 +1,11 @@
 import type { ProblemContext } from "./problem-context";
-import type { GenerateHintsRequest } from "./hints";
+import type { AppLocale, GenerateHintsRequest } from "./hints";
 import type {
   HintSession,
   SaveProblemPayload,
   UnsaveProblemPayload,
 } from "./persistence";
+import type { PopupInitRequest } from "./popup-init";
 import type {
   AnalysisSettings,
   AnalyzeSolutionRequest,
@@ -16,6 +17,8 @@ import type { TranslateProblemRequest } from "./translation";
 export type ExtensionMessage =
   | { type: "PING" }
   | { type: "GET_PROBLEM_CONTEXT" }
+  | { type: "GET_POPUP_INIT"; payload?: PopupInitRequest }
+  | { type: "PROBLEM_CONTEXT_UPDATED"; payload: ProblemContext }
   | { type: "PROBLEM_CONTEXT"; payload: ProblemContext | null }
   | {
       type: "GENERATE_HINTS";
@@ -29,8 +32,8 @@ export type ExtensionMessage =
   | { type: "GET_SAVED_PROBLEMS" }
   | { type: "SAVE_PROBLEM"; payload: SaveProblemPayload }
   | { type: "UNSAVE_PROBLEM"; payload: UnsaveProblemPayload }
-  | { type: "GET_HINT_SESSION"; payload: { problemId: string } }
-  | { type: "UPDATE_HINT_SESSION"; payload: HintSession }
+  | { type: "GET_HINT_SESSION"; payload: { problemId: string; locale: AppLocale } }
+  | { type: "UPDATE_HINT_SESSION"; payload: HintSession & { locale: AppLocale } }
   | { type: "GET_LEARNING_PROFILE" }
   | { type: "GET_ANALYSIS_CONTEXT" }
   | { type: "ANALYZE_SOLUTION"; payload?: AnalyzeSolutionRequest }

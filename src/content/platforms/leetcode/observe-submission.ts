@@ -27,11 +27,13 @@ const VERDICT_PATTERNS: Array<{ verdict: SubmissionVerdict; pattern: RegExp }> =
   ];
 
 const VERDICT_TIMEOUT_MS = 60_000;
+const VERDICT_DEBOUNCE_MS = 150;
 
 let pendingSnapshot: SubmitSnapshot | null = null;
 let awaitingVerdict = false;
 let resultObserver: MutationObserver | null = null;
 let verdictTimeoutId: ReturnType<typeof setTimeout> | null = null;
+let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 let clickListenerAttached = false;
 let currentPageUrl = "";
 
@@ -79,6 +81,10 @@ function clearVerdictWatch(): void {
     clearTimeout(verdictTimeoutId);
     verdictTimeoutId = null;
   }
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+    debounceTimer = null;
+  }
   awaitingVerdict = false;
   pendingSnapshot = null;
 }
@@ -105,20 +111,37 @@ function emitSubmissionDetected(
   });
 }
 
-function checkForVerdict(document: Document): void {
-  if (!awaitingVerdict || !pendingSnapshot) return;
-
-  const panelText = RESULT_PANEL_SELECTORS.map((selector) => {
+function readResultPanelText(document: Document): string {
+  return RESULT_PANEL_SELECTORS.map((selector) => {
     const element = document.querySelector(selector);
     return element?.textContent ?? "";
   }).join("\n");
+}
 
-  const verdict =
-    parseVerdict(panelText) ?? parseVerdict(document.body.innerText.slice(-3000));
+function checkForVerdict(document: Document): void {
+  if (!awaitingVerdict || !pendingSnapshot) return;
+
+  const panelText = readResultPanelText(document);
+  const verdict = parseVerdict(panelText);
 
   if (verdict) {
     emitSubmissionDetected(document, verdict);
   }
+}
+
+function scheduleVerdictCheck(document: Document): void {
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    checkForVerdict(document);
+  }, VERDICT_DEBOUNCE_MS);
+}
+
+function findResultObserveTarget(document: Document): Element | null {
+  for (const selector of RESULT_PANEL_SELECTORS) {
+    const element = document.querySelector(selector);
+    if (element) return element.parentElement ?? element;
+  }
+  return null;
 }
 
 function startVerdictWatch(document: Document): void {
@@ -129,8 +152,9 @@ function startVerdictWatch(document: Document): void {
     setTimeout(() => checkForVerdict(document), delayMs);
   };
 
-  resultObserver = new MutationObserver(() => checkForVerdict(document));
-  resultObserver.observe(document.body, {
+  const observeTarget = findResultObserveTarget(document) ?? document.body;
+  resultObserver = new MutationObserver(() => scheduleVerdictCheck(document));
+  resultObserver.observe(observeTarget, {
     childList: true,
     subtree: true,
     characterData: true,

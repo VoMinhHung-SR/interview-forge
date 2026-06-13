@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { sendMessage } from "@/shared/messaging";
-import type { AppLocale, ProblemContext, TranslateProblemResponse } from "@/shared/types";
+import type {
+  AppLocale,
+  PopupInitTranslation,
+  ProblemContext,
+  TranslateProblemResponse,
+} from "@/shared/types";
 
 interface ProblemTranslationState {
   displayDescription: string;
@@ -12,9 +17,10 @@ interface ProblemTranslationState {
 export function useProblemTranslation(
   problem: ProblemContext | null,
   locale: AppLocale,
+  initialTranslation?: PopupInitTranslation | null,
 ): ProblemTranslationState {
   const [translatedDescription, setTranslatedDescription] = useState<string | null>(
-    null,
+    initialTranslation?.description ?? null,
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,15 +28,22 @@ export function useProblemTranslation(
   const baseDescription = problem?.description ?? "";
 
   useEffect(() => {
-    setTranslatedDescription(null);
     setError(null);
 
     if (!problem?.description) {
+      setTranslatedDescription(null);
       setLoading(false);
       return;
     }
 
     if (locale !== "vi") {
+      setTranslatedDescription(null);
+      setLoading(false);
+      return;
+    }
+
+    if (initialTranslation?.description) {
+      setTranslatedDescription(initialTranslation.description);
       setLoading(false);
       return;
     }
@@ -69,7 +82,13 @@ export function useProblemTranslation(
     return () => {
       cancelled = true;
     };
-  }, [problem?.url, problem?.problemId, problem?.description, locale]);
+  }, [
+    problem?.url,
+    problem?.problemId,
+    problem?.description,
+    locale,
+    initialTranslation?.description,
+  ]);
 
   const displayDescription =
     locale === "vi" && translatedDescription ?

@@ -1,4 +1,4 @@
-import type { ProblemContext } from "@/shared/types";
+import type { PopupInitTranslation, ProblemContext } from "@/shared/types";
 import { useProblemTranslation } from "@/popup/hooks/useProblemTranslation";
 import { useTranslation } from "@/popup/hooks/useTranslation";
 import { DifficultyBadge } from "./DifficultyBadge";
@@ -15,6 +15,7 @@ interface ProblemSummaryProps {
   saveLoading?: boolean;
   /** Renders content only — parent supplies card chrome and header */
   embedded?: boolean;
+  initialTranslation?: PopupInitTranslation | null;
 }
 
 function BookmarkIcon({ filled }: { filled: boolean }) {
@@ -64,11 +65,13 @@ export function ProblemSummary({
   onToggleSave,
   saveLoading = false,
   embedded = false,
+  initialTranslation,
 }: ProblemSummaryProps) {
   const { t, locale } = useTranslation();
   const { displayDescription, loading: translationLoading } = useProblemTranslation(
     problem,
     locale,
+    initialTranslation,
   );
 
   if (loading) {

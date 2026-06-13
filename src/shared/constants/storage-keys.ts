@@ -2,9 +2,13 @@ export const STORAGE_KEYS = {
   recentProblems: "if:recent_problems",
   savedProblems: "if:saved_problems",
   learningProfile: "if:learning_profile",
-  hintSession: (problemId: string) => `if:hint:${problemId}`,
+  hintSession: (problemId: string, locale: string) =>
+    `if:hint:${problemId}:${locale}`,
+  hintSessionLegacy: (problemId: string) => `if:hint:${problemId}`,
+  prefetchHints: "if:prefetch_hints",
   translation: (problemId: string, locale: string) =>
     `if:translation:${problemId}:${locale}`,
+  translationIndex: "if:translation_index",
   hintLadder: (problemId: string, locale: string) =>
     `if:hint_ladder:${problemId}:${locale}`,
   solutionAnalysis: (problemId: string, codeHash: string) =>

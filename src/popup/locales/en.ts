@@ -43,6 +43,8 @@ export const en = {
     "Get step-by-step hints and code feedback — without spoiling the full solution.",
   contextMenuHint:
     "Right-click anywhere on the problem page → Interview Forge → Get Hint or Review Code.",
+  coachResumeHint: "You left off at hint {{current}} of {{max}} — tap Next Hint to continue.",
+  coachTopPattern: "Most practiced pattern: {{pattern}} ({{count}}×)",
   allHintsShown: "Enough hints for now — try coding, then review your solution.",
 
   loadingHint: "Generating hint",

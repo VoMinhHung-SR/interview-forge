@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ProblemContext, ProblemDifficulty, RecentProblem } from "@/shared/types";
+import type { PopupInitTranslation, ProblemContext, ProblemDifficulty, RecentProblem } from "@/shared/types";
 import { openProblemPage } from "@/shared/utils/problem-url";
 import { useTranslation } from "@/popup/hooks/useTranslation";
 import { DifficultyBadge } from "./DifficultyBadge";
@@ -19,6 +19,7 @@ interface ProblemHubPanelProps {
   saveLoading: boolean;
   recent: RecentProblem[];
   recentLoading: boolean;
+  initialTranslation?: PopupInitTranslation | null;
 }
 
 function isProblemDifficulty(value: string | undefined): value is ProblemDifficulty {
@@ -147,6 +148,7 @@ export function ProblemHubPanel({
   saveLoading,
   recent,
   recentLoading,
+  initialTranslation,
 }: ProblemHubPanelProps) {
   const [activeTab, setActiveTab] = useState<HubTab>("problem");
 
@@ -170,6 +172,7 @@ export function ProblemHubPanel({
             onToggleSave={onToggleSave}
             saveLoading={saveLoading}
             embedded
+            initialTranslation={initialTranslation}
           />
         : <RecentProblemsTab recent={recent} loading={recentLoading} />}
       </div>
